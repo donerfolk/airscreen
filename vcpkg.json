@@ -1,0 +1,8 @@
+{
+  "name": "airscreen",
+  "version-string": "1.0.0",
+  "description": "Windows AirPlay receiver",
+  "dependencies": [
+    "openssl"
+  ]
+}

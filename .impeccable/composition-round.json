@@ -1,0 +1,41 @@
+{
+  "title": "Choose the composition",
+  "question": "Continuity Card is locked. Which layout should AirScreen wait in?",
+  "options": [
+    {
+      "id": "plate-center",
+      "label": "Centered plate",
+      "kicker": "DECISION COMP",
+      "thesis": "One glass card in the field: name, status, and four text controls live inside it.",
+      "palette": ["#1d1d1f", "#2c2c2e", "#f5f5f7", "#86868b"],
+      "materials": ["frosted glass", "SF Pro", "outlined capsules"],
+      "viewport": "Dark field. Centered plate. Huge AirScreen. Waiting for iPhone. Controls in the plate.",
+      "risk": "Controls compete with the name at the same object.",
+      "comp": ".impeccable/mocks/comp-plate.webp"
+    },
+    {
+      "id": "plate-stage",
+      "label": "Display slab",
+      "thesis": "The plate is a stage for the name; controls sit underneath as a separate row.",
+      "palette": ["#1d1d1f", "#2c2c2e", "#f5f5f7", "#86868b"],
+      "materials": ["frosted glass", "SF Pro", "text controls"],
+      "viewport": "Shorter 16:9 glass slab. Name owns the plate. Rename / Full Screen / Always on Top / Require PIN below it.",
+      "risk": "Reads as a TV with a caption bar if the plate gets too wide.",
+      "comp": ".impeccable/mocks/comp-stage.webp"
+    },
+    {
+      "id": "plate-fill",
+      "label": "Full-bleed glass",
+      "thesis": "The window is the plate: name at optical center, capsules pinned to the bottom.",
+      "palette": ["#1d1d1f", "#2c2c2e", "#f5f5f7", "#86868b"],
+      "materials": ["frosted glass", "SF Pro", "outlined capsules"],
+      "viewport": "Thin dark margin. Near-full glass. Giant AirScreen. Status. Four capsules at the plate floor.",
+      "risk": "Loses the Continuity-card silhouette if the margin is too thin.",
+      "comp": ".impeccable/mocks/comp-fill.webp"
+    }
+  ],
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  }
+}

@@ -1,0 +1,16 @@
+#include "resource.h"
+#include <winresrc.h>
+
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "airscreen.manifest"
+IDI_APP ICON "app.ico"
+
+IDD_RENAME DIALOGEX 0, 0, 260, 88
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Receiver name"
+FONT 10, "Segoe UI"
+BEGIN
+    LTEXT           "This is the name your iPhone shows in Screen Mirroring.", -1, 12, 10, 236, 18
+    EDITTEXT        IDC_NAME, 12, 32, 236, 16, ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "Save", IDOK, 140, 62, 52, 16
+    PUSHBUTTON      "Cancel", IDCANCEL, 196, 62, 52, 16
+END

@@ -1,0 +1,119 @@
+{
+  "title": "Choose the visual world",
+  "question": "The roll assigned Studio Display OSD. Keep it, take Continuity Card, try the console, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Studio Display OSD",
+      "kicker": "THE ROLL",
+      "lineage": "Apple Studio Display on-screen menus",
+      "thesis": "The window is the display’s own overlay: black glass, one name, a hairline menu.",
+      "palette": ["#000000", "#f5f5f7", "#86868b", "#3a3a3c"],
+      "materials": ["black glass", "hairline rules", "SF Pro"],
+      "viewport": "Full-bleed black. Tiny AirScreen top-left. Receiver name large and centered. One rewriting status line. Bottom: Rename · Full Screen · On Top · Require PIN as OSD text.",
+      "risk": "Reads as a blank TV if the name is not large enough to be the object.",
+      "raised": [
+        {
+          "from": "challenger-lexicon",
+          "raise": "PIN is the only chromatic event; waiting stays white on black."
+        },
+        {
+          "from": "challenger-phosphor",
+          "raise": "Status is one live rewriting line, not a lamp badge."
+        },
+        {
+          "from": "challenger-tensegrity",
+          "raise": "Waiting, pairing, live, and failed are four distinct material states."
+        }
+      ],
+      "comp": ".impeccable/mocks/decision/assigned.webp"
+    },
+    {
+      "id": "model-pick",
+      "label": "Continuity Card",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "macOS Continuity / Screen Mirroring sheet",
+      "thesis": "A centered glass plate is the receiver: name, status, then text controls — not a toolbar.",
+      "palette": ["#1d1d1f", "#2c2c2e", "#f5f5f7", "#0a84ff"],
+      "materials": ["frosted glass", "SF Pro", "text buttons"],
+      "viewport": "Dark field. Centered rounded glass card. AirScreen wordmark. Huge receiver name. Status caption. Text control row. PIN replaces the card’s interior.",
+      "risk": "Familiar — most Apple-on-Windows clones land here.",
+      "comp": ".impeccable/mocks/decision/model-pick.webp"
+    },
+    {
+      "id": "challenger-elbow-panel",
+      "label": "Elbow Panel Console",
+      "verdict": "competitive",
+      "lineage": "pill-cornered starship wall panel",
+      "thesis": "Four pastel banks on black: the controls are the layout, the name sits in the gold segment.",
+      "palette": ["#000000", "#c5b4e3", "#f3c4a8", "#e8c36a", "#9bb6e8"],
+      "materials": ["flat pastel blocks", "black glass", "numeric clusters"],
+      "viewport": "Black window framed by a thick lilac elbow. Name in the gold bank. PIN as a numeric cluster. Rename, Full Screen, On Top, PIN as peach and periwinkle pills.",
+      "case": "Holds product clarity: the four actions are unmistakable banks. Loses identification against Apple language.",
+      "risk": "Reads as sci-fi hardware, not an AirPlay display.",
+      "comp": ".impeccable/mocks/decision/challenger-elbow-panel.webp",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-elbow-panel-console-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/pop-culture-shelf-elbow-panel-console.webp"
+    },
+    {
+      "id": "challenger-lexicon",
+      "label": "Lexicon Spread",
+      "verdict": "declined",
+      "lineage": "nineteenth-century lexicon page",
+      "thesis": "The receiver name is the headword; the PIN is the only colour plate.",
+      "palette": ["#1b1814", "#efe5d0", "#a33327"],
+      "materials": ["cream stock", "engraving black", "bordered plate"],
+      "viewport": "Guide words Waiting — Pairing. Name as headword. PIN inside a bordered plate.",
+      "case": "Loses identification and dim-room clarity: a dictionary is not a display.",
+      "kept": "PIN is the only chromatic event.",
+      "risk": "Cream stock fights a dim-room screen.",
+      "hero": "https://impeccable.style/worlds/cards/rw-lexicon-shoulder-and-plate-hero.webp"
+    },
+    {
+      "id": "challenger-phosphor",
+      "label": "Phosphor Terminal",
+      "verdict": "declined",
+      "lineage": "green-phosphor machine-room terminal",
+      "thesis": "Connection states print themselves as a live line on glass.",
+      "palette": ["#030805", "#3dff6a"],
+      "materials": ["P1 phosphor", "scanline glass"],
+      "viewport": "One 80-column field. Name. Status line rewriting. PIN as typed digits.",
+      "case": "Loses both axes: a log is not a waiting display, and not Apple.",
+      "kept": "Status is one live rewriting line.",
+      "risk": "Hacker terminal, not a screen.",
+      "hero": "https://impeccable.style/worlds/cards/signals-instruments-phosphor-terminal-midnight-hero.webp"
+    },
+    {
+      "id": "challenger-tensegrity",
+      "label": "Tensegrity Column",
+      "verdict": "declined",
+      "lineage": "carbon-rod tensegrity sculpture",
+      "thesis": "iPhone and PC as opposing members; the window tightens when they lock.",
+      "palette": ["#111111", "#c43b2a", "#d8d4cc"],
+      "materials": ["matte carbon rods", "red cord"],
+      "viewport": "Name at a node. Slack waiting, taut pairing, locked live, snapped failed.",
+      "case": "Loses both: sculpture obscures the waiting screen.",
+      "kept": "Four distinct material states.",
+      "risk": "Abstract sculpture instead of a display.",
+      "hero": "https://impeccable.style/worlds/cards/kinetic-sculpture-automata-tensegrity-breathing-column-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": ["safer", "bolder"]
+  },
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "LonelyScreen-class receiver: status, name field, and a settings toolbar, at full craft.",
+    "palette": ["#111827", "#ffffff", "#2563eb"],
+    "materials": ["flat panels", "standard buttons", "system chrome"],
+    "viewport": "Dark app chrome. Name + status. Toolbar: Rename, Fullscreen, Always on top, PIN.",
+    "risk": "Indistinguishable from LonelyScreen by design.",
+    "comp": ".impeccable/mocks/decision/canon.webp"
+  },
+  "steer": true
+}

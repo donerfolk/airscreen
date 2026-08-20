@@ -1,0 +1,418 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-20T13:36:00.000Z",
+  "title": "Design System: AirScreen",
+  "extensions": {
+    "colorMeta": {
+      "field": {
+        "role": "neutral",
+        "displayName": "Graphite Field",
+        "canonical": "#1d1d1f",
+        "tonalRamp": [
+          "oklch(15% 0.005 270)",
+          "oklch(21% 0.005 270)",
+          "oklch(32% 0.005 270)",
+          "oklch(44% 0.005 270)",
+          "oklch(56% 0.005 270)",
+          "oklch(68% 0.005 270)",
+          "oklch(82% 0.004 270)",
+          "oklch(95% 0.003 270)"
+        ]
+      },
+      "plate": {
+        "role": "neutral",
+        "displayName": "Frosted Plate",
+        "canonical": "#2c2c2e",
+        "tonalRamp": [
+          "oklch(15% 0.004 270)",
+          "oklch(22% 0.004 270)",
+          "oklch(28% 0.004 270)",
+          "oklch(40% 0.004 270)",
+          "oklch(52% 0.004 270)",
+          "oklch(66% 0.004 270)",
+          "oklch(80% 0.003 270)",
+          "oklch(95% 0.003 270)"
+        ]
+      },
+      "plate-hi": {
+        "role": "neutral",
+        "displayName": "Plate Lift",
+        "canonical": "#3a3a3c",
+        "tonalRamp": [
+          "oklch(15% 0.004 270)",
+          "oklch(24% 0.004 270)",
+          "oklch(34% 0.004 270)",
+          "oklch(46% 0.004 270)",
+          "oklch(58% 0.004 270)",
+          "oklch(70% 0.004 270)",
+          "oklch(84% 0.003 270)",
+          "oklch(95% 0.003 270)"
+        ]
+      },
+      "capsule-rest": {
+        "role": "neutral",
+        "displayName": "Capsule Rest",
+        "canonical": "#303032",
+        "tonalRamp": [
+          "oklch(15% 0.004 270)",
+          "oklch(22% 0.004 270)",
+          "oklch(30% 0.004 270)",
+          "oklch(42% 0.004 270)",
+          "oklch(54% 0.004 270)",
+          "oklch(68% 0.004 270)",
+          "oklch(82% 0.003 270)",
+          "oklch(95% 0.003 270)"
+        ]
+      },
+      "rim": {
+        "role": "neutral",
+        "displayName": "Glass Rim",
+        "canonical": "#606064",
+        "tonalRamp": [
+          "oklch(15% 0.006 270)",
+          "oklch(26% 0.006 270)",
+          "oklch(37% 0.006 270)",
+          "oklch(48% 0.006 270)",
+          "oklch(60% 0.006 270)",
+          "oklch(72% 0.005 270)",
+          "oklch(84% 0.004 270)",
+          "oklch(95% 0.003 270)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#48484a",
+        "tonalRamp": [
+          "oklch(15% 0.004 270)",
+          "oklch(28% 0.004 270)",
+          "oklch(40% 0.004 270)",
+          "oklch(52% 0.004 270)",
+          "oklch(64% 0.004 270)",
+          "oklch(76% 0.004 270)",
+          "oklch(86% 0.003 270)",
+          "oklch(95% 0.003 270)"
+        ]
+      },
+      "label": {
+        "role": "neutral",
+        "displayName": "Label",
+        "canonical": "#f5f5f7",
+        "tonalRamp": [
+          "oklch(15% 0.003 270)",
+          "oklch(28% 0.003 270)",
+          "oklch(42% 0.003 270)",
+          "oklch(56% 0.003 270)",
+          "oklch(70% 0.003 270)",
+          "oklch(82% 0.003 270)",
+          "oklch(90% 0.003 270)",
+          "oklch(97% 0.003 270)"
+        ]
+      },
+      "secondary": {
+        "role": "neutral",
+        "displayName": "Secondary Label",
+        "canonical": "#a1a1a6",
+        "tonalRamp": [
+          "oklch(15% 0.008 270)",
+          "oklch(28% 0.008 270)",
+          "oklch(40% 0.008 270)",
+          "oklch(52% 0.008 270)",
+          "oklch(65% 0.008 270)",
+          "oklch(76% 0.008 270)",
+          "oklch(86% 0.006 270)",
+          "oklch(95% 0.004 270)"
+        ]
+      },
+      "on-ink": {
+        "role": "neutral",
+        "displayName": "On Ink",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(28% 0 0)",
+          "oklch(42% 0 0)",
+          "oklch(56% 0 0)",
+          "oklch(70% 0 0)",
+          "oklch(82% 0 0)",
+          "oklch(92% 0 0)",
+          "oklch(100% 0 0)"
+        ]
+      },
+      "blue": {
+        "role": "primary",
+        "displayName": "Continuity Blue",
+        "canonical": "#0a84ff",
+        "tonalRamp": [
+          "oklch(15% 0.12 250)",
+          "oklch(26% 0.16 250)",
+          "oklch(38% 0.18 250)",
+          "oklch(50% 0.19 250)",
+          "oklch(63% 0.19 250)",
+          "oklch(74% 0.14 250)",
+          "oklch(85% 0.08 250)",
+          "oklch(95% 0.03 250)"
+        ]
+      },
+      "wait": {
+        "role": "tertiary",
+        "displayName": "Wait Gray",
+        "canonical": "#8e8e93",
+        "tonalRamp": [
+          "oklch(15% 0.01 270)",
+          "oklch(28% 0.01 270)",
+          "oklch(40% 0.01 270)",
+          "oklch(52% 0.01 270)",
+          "oklch(65% 0.01 270)",
+          "oklch(76% 0.01 270)",
+          "oklch(86% 0.008 270)",
+          "oklch(95% 0.004 270)"
+        ]
+      },
+      "live": {
+        "role": "tertiary",
+        "displayName": "Live Green",
+        "canonical": "#30d158",
+        "tonalRamp": [
+          "oklch(15% 0.12 150)",
+          "oklch(28% 0.15 150)",
+          "oklch(42% 0.17 150)",
+          "oklch(56% 0.18 150)",
+          "oklch(68% 0.18 150)",
+          "oklch(78% 0.14 150)",
+          "oklch(88% 0.08 150)",
+          "oklch(95% 0.04 150)"
+        ]
+      },
+      "pair": {
+        "role": "tertiary",
+        "displayName": "Pairing Amber",
+        "canonical": "#ff9f0a",
+        "tonalRamp": [
+          "oklch(15% 0.10 70)",
+          "oklch(28% 0.13 70)",
+          "oklch(42% 0.15 70)",
+          "oklch(56% 0.16 70)",
+          "oklch(68% 0.17 70)",
+          "oklch(79% 0.17 70)",
+          "oklch(88% 0.10 70)",
+          "oklch(95% 0.04 70)"
+        ]
+      },
+      "fail": {
+        "role": "tertiary",
+        "displayName": "Fail Red",
+        "canonical": "#ff453a",
+        "tonalRamp": [
+          "oklch(15% 0.14 25)",
+          "oklch(28% 0.18 25)",
+          "oklch(40% 0.20 25)",
+          "oklch(52% 0.22 25)",
+          "oklch(64% 0.22 25)",
+          "oklch(76% 0.16 25)",
+          "oklch(86% 0.09 25)",
+          "oklch(95% 0.04 25)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Receiver name only. Medium/semibold SF Pro Display, glyph advance 0.92."
+      },
+      "pin": {
+        "displayName": "PIN",
+        "purpose": "Pairing digits. Regular display face, untracked, owns the plate."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Wordmark and how-to line at 13px secondary."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Status under the name and the PIN hint at 17px."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Status-pill text and floor-capsule labels at 12px."
+      }
+    },
+    "shadows": [
+      {
+        "name": "plate-umbra",
+        "value": "0 2px 4px rgba(0,0,0,0.03), 0 4px 8px rgba(0,0,0,0.04), 0 8px 16px rgba(0,0,0,0.05), 0 12px 28px rgba(0,0,0,0.06)",
+        "purpose": "Soft stacked lift under the Continuity plate only. GDI+ paints eight black rounds, alpha 7–14."
+      },
+      {
+        "name": "dot-glow",
+        "value": "0 0 8px rgba(142,142,147,0.35)",
+        "purpose": "Pulse halo on the status-pill dot; color follows wait/pair/live/fail."
+      }
+    ],
+    "motion": [
+      {
+        "name": "pulse-dot",
+        "value": "430ms sine",
+        "purpose": "Idle pill-dot alpha 140–255 and halo 30–70; 40ms timer while not mirroring."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "min-window",
+        "value": "720px 480px",
+        "purpose": "WM_GETMINMAXINFO floor; idle plate must still read."
+      },
+      {
+        "name": "default-window",
+        "value": "1100px 720px",
+        "purpose": "CreateWindowEx default size."
+      },
+      {
+        "name": "plate-narrow",
+        "value": "200px",
+        "purpose": "If computed plate width < 200px, plate becomes 92% of the window."
+      },
+      {
+        "name": "plate-short",
+        "value": "160px",
+        "purpose": "If computed plate height < 160px, plate becomes 88% of the window."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Continuity Plate",
+      "kind": "card",
+      "refersTo": "plate",
+      "description": "Full-bleed glass card on the graphite field; one object lives on it.",
+      "html": "<div class=\"ds-field\"><div class=\"ds-plate\"><div class=\"ds-plate-head\"><span class=\"ds-wordmark\">AirScreen</span><span class=\"ds-pill\"><i class=\"ds-pill-dot\"></i>Waiting</span></div><div class=\"ds-name\">AirScreen</div><div class=\"ds-status\">Waiting for iPhone</div><div class=\"ds-how\">On iPhone: Control Center  →  Screen Mirroring  →  AirScreen</div><div class=\"ds-floor\"><button class=\"ds-cap\" type=\"button\"><svg viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M2.5 11.5l7.6-7.6M10.1 3.9l2-2-1.1 2.4M2 9.8l2.2 2.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>Rename</button><button class=\"ds-cap\" type=\"button\"><svg viewBox=\"0 0 14 14\" aria-hidden=\"true\"><rect x=\"1.7\" y=\"1.4\" width=\"10.6\" height=\"8.1\" rx=\"1.7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M7 10.8v1.7M4.5 12.5h5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\"/></svg>Full Screen</button></div></div></div>",
+      "css": ".ds-field{background:#1d1d1f;padding:24px;min-height:320px;font-family:\"SF Pro Text\",\"Segoe UI Variable Text\",\"Segoe UI\",sans-serif}.ds-plate{position:relative;background:#2c2c2e;border-radius:28px;padding:22px 36px 36px;min-height:272px;box-shadow:0 2px 4px rgba(0,0,0,0.03),0 4px 8px rgba(0,0,0,0.04),0 8px 16px rgba(0,0,0,0.05),0 12px 28px rgba(0,0,0,0.06);overflow:hidden}.ds-plate::before{content:\"\";position:absolute;inset:0 0 42% 0;background:linear-gradient(180deg,rgba(255,255,255,0.22),rgba(255,255,255,0));pointer-events:none}.ds-plate::after{content:\"\";position:absolute;inset:0;border-radius:28px;box-shadow:inset 0 0 0 1.15px #606064;pointer-events:none}.ds-plate-head{display:flex;align-items:center;justify-content:space-between;height:28px;position:relative;z-index:1}.ds-wordmark{color:#a1a1a6;font-size:13px;font-weight:400}.ds-name{position:relative;z-index:1;margin-top:48px;text-align:center;color:#f5f5f7;font-family:\"SF Pro Display Medium\",\"SF Pro Display\",\"Segoe UI Variable Display Semibold\",\"Segoe UI\",sans-serif;font-size:clamp(36px,8.2vw,56px);font-weight:600;letter-spacing:-0.08em;line-height:1.35}.ds-status{position:relative;z-index:1;margin-top:4px;text-align:center;color:#a1a1a6;font-size:17px}.ds-how{position:relative;z-index:1;margin-top:6px;text-align:center;color:#a1a1a6;font-size:13px}.ds-floor{position:relative;z-index:1;display:flex;gap:10px;margin-top:36px}.ds-pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px 0 12px;border-radius:999px;background:#3a3a3c;color:#f5f5f7;font-size:12px}.ds-pill-dot{width:7px;height:7px;border-radius:50%;background:#8e8e93;box-shadow:0 0 8px rgba(142,142,147,0.45)}.ds-cap{flex:1;display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 10px 0 12px;border-radius:999px;border:1px solid #48484a;background:#303032;color:#a1a1a6;font-size:12px;font-family:inherit;cursor:pointer}.ds-cap svg{width:14px;height:14px;flex:none}.ds-cap:hover,.ds-cap:focus-visible{background:#3a3a3c;color:#f5f5f7;outline:none}"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Top-right state chip: dot plus Waiting, Pairing, Live, or Failed.",
+      "html": "<span class=\"ds-pill ds-pill-wait\"><i class=\"ds-pill-dot\"></i>Waiting</span>",
+      "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;width:108px;height:28px;padding:0 12px;border-radius:999px;background:#3a3a3c;color:#f5f5f7;font-family:\"SF Pro Text\",\"Segoe UI Variable Text\",\"Segoe UI\",sans-serif;font-size:12px;font-weight:400;box-sizing:border-box}.ds-pill-dot{width:7px;height:7px;border-radius:50%;background:#8e8e93;box-shadow:0 0 8px rgba(142,142,147,0.45)}.ds-pill:hover,.ds-pill:focus-visible{filter:brightness(1.08);outline:none}"
+    },
+    {
+      "name": "Capsule Off",
+      "kind": "button",
+      "refersTo": "capsule-off",
+      "description": "Floor control at rest: outlined stadium, muted stroke icon and label.",
+      "html": "<button class=\"ds-btn-cap\" type=\"button\"><svg viewBox=\"0 0 14 14\" aria-hidden=\"true\"><rect x=\"1.7\" y=\"1.4\" width=\"10.6\" height=\"8.1\" rx=\"1.7\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M7 10.8v1.7M4.5 12.5h5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\"/></svg>Full Screen</button>",
+      "css": ".ds-btn-cap{display:inline-flex;align-items:center;gap:6px;min-width:96px;height:44px;padding:0 10px 0 12px;border-radius:999px;border:1px solid #48484a;background:#303032;color:#a1a1a6;font-family:\"SF Pro Text\",\"Segoe UI Variable Text\",\"Segoe UI\",sans-serif;font-size:12px;font-weight:400;cursor:pointer}.ds-btn-cap svg{width:14px;height:14px;flex:none}.ds-btn-cap:hover,.ds-btn-cap:focus-visible{background:#3a3a3c;color:#f5f5f7;outline:none}.ds-btn-cap:active{background:#3a3a3c;color:#ffffff}"
+    },
+    {
+      "name": "Capsule On",
+      "kind": "button",
+      "refersTo": "capsule-on",
+      "description": "Floor control while the setting is on: solid Continuity Blue, white stroke icon.",
+      "html": "<button class=\"ds-btn-cap-on\" type=\"button\"><svg viewBox=\"0 0 14 14\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"3.4\" r=\"2.4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M7 6.2v6.2M4.5 8.1h5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\"/></svg>Always on Top</button>",
+      "css": ".ds-btn-cap-on{display:inline-flex;align-items:center;gap:6px;min-width:96px;height:44px;padding:0 10px 0 12px;border-radius:999px;border:0;background:#0a84ff;color:#ffffff;font-family:\"SF Pro Text\",\"Segoe UI Variable Text\",\"Segoe UI\",sans-serif;font-size:12px;font-weight:400;cursor:pointer}.ds-btn-cap-on svg{width:14px;height:14px;flex:none}.ds-btn-cap-on:hover,.ds-btn-cap-on:focus-visible{filter:brightness(1.06);outline:none}.ds-btn-cap-on:active{filter:brightness(0.96)}"
+    },
+    {
+      "name": "Receiver Name",
+      "kind": "custom",
+      "refersTo": "receiver-name",
+      "description": "The object on the plate: tracked display name, clickable, brightens on hover.",
+      "html": "<button class=\"ds-name-hit\" type=\"button\">AirScreen</button>",
+      "css": ".ds-name-hit{display:block;width:100%;border:0;background:transparent;color:#f5f5f7;font-family:\"SF Pro Display Medium\",\"SF Pro Display Semibold\",\"SF Pro Display\",\"Segoe UI Variable Display Semibold\",\"Segoe UI\",sans-serif;font-size:clamp(36px,8.2vw,72px);font-weight:600;letter-spacing:-0.08em;line-height:1.35;text-align:center;cursor:pointer}.ds-name-hit:hover,.ds-name-hit:focus-visible{color:#ffffff;outline:none}"
+    },
+    {
+      "name": "Pairing PIN",
+      "kind": "custom",
+      "refersTo": "pin-digits",
+      "description": "PIN takes the plate: regular display digits and a muted hint; capsules hide.",
+      "html": "<div class=\"ds-pin\"><div class=\"ds-pin-digits\">1234</div><div class=\"ds-pin-hint\">Enter this PIN on your iPhone</div></div>",
+      "css": ".ds-pin{text-align:center;font-family:\"SF Pro Text\",\"Segoe UI Variable Text\",\"Segoe UI\",sans-serif}.ds-pin-digits{color:#f5f5f7;font-family:\"SF Pro Display\",\"Segoe UI Variable Display\",\"Segoe UI\",sans-serif;font-size:clamp(56px,16vw,96px);font-weight:400;line-height:1.2;letter-spacing:normal}.ds-pin-hint{margin-top:8px;color:#a1a1a6;font-size:17px;font-weight:400}.ds-pin:hover .ds-pin-digits,.ds-pin:focus-visible .ds-pin-digits{color:#ffffff}"
+    },
+    {
+      "name": "Wordmark",
+      "kind": "nav",
+      "refersTo": "wordmark",
+      "description": "Quiet product mark at the top-left of the plate, never a kicker.",
+      "html": "<span class=\"ds-mark-text\">AirScreen</span>",
+      "css": ".ds-mark-text{color:#a1a1a6;font-family:\"SF Pro Text\",\"Segoe UI Variable Text\",\"Segoe UI\",sans-serif;font-size:13px;font-weight:400;line-height:1.3}.ds-mark-text:hover,.ds-mark-text:focus-visible{color:#f5f5f7;outline:none}"
+    },
+    {
+      "name": "App Mark",
+      "kind": "custom",
+      "refersTo": "plate",
+      "description": "Rounded display glyph for window and tray: plate body, pale glass screen.",
+      "html": "<svg class=\"ds-app-mark\" viewBox=\"0 0 32 32\" aria-hidden=\"true\"><rect x=\"3\" y=\"5\" width=\"26\" height=\"22\" rx=\"5\" fill=\"#2c2c2e\" stroke=\"#5a5a5e\" stroke-width=\"0.7\"/><rect x=\"6\" y=\"8\" width=\"20\" height=\"13\" rx=\"2.4\" fill=\"#f5f5f7\"/></svg>",
+      "css": ".ds-app-mark{width:32px;height:32px;display:block}.ds-app-mark:hover,.ds-app-mark:focus-visible{opacity:0.92;outline:none}"
+    },
+    {
+      "name": "Gear Overlay",
+      "kind": "button",
+      "refersTo": "gear",
+      "description": "Live-only 40px circle in plate/plate-hi; idle waiting does not show it.",
+      "html": "<button class=\"ds-gear\" type=\"button\" aria-label=\"Settings\"><svg viewBox=\"0 0 18 18\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"9\" r=\"2.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M9 2.2v1.6M9 14.2v1.6M2.2 9h1.6M14.2 9h1.6M4.1 4.1l1.1 1.1M12.8 12.8l1.1 1.1M13.9 4.1l-1.1 1.1M5.2 12.8l-1.1 1.1\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\"/></svg></button>",
+      "css": ".ds-gear{width:40px;height:40px;border:0;border-radius:999px;background:#2c2c2e;color:#f5f5f7;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.ds-gear svg{width:18px;height:18px}.ds-gear:hover,.ds-gear:focus-visible{background:#3a3a3c;outline:none}.ds-gear:active{background:#3a3a3c}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Continuity Plate",
+    "overview": "The idle window is a dim display with no signal: a near-black field and one frosted glass plate. The object on that plate is the receiver name iPhone will list — not a dashboard, not a settings page. Status is a small pill and one muted line. Controls sit on the floor as outlined capsules. When a pairing PIN appears, it takes the plate; the name and the capsules leave.\n\nThis is Apple Continuity language on a native Win32 client, not a macOS window replica. Type is SF Pro when the machine has it, otherwise Segoe UI Variable. Display faces render medium or semibold (bold only if those cuts are missing). The plate is opaque graphite with a white sheen and a hairline rim — GDI+ cannot photograph blur, and the system does not pretend it can.\n\nSizes are device-independent pixels at 96 DPI (`MulDiv(value, dpi, 96)`). The default window is 1100×720; the shell will not shrink below 720×480.",
+    "keyCharacteristics": [
+      "Full-bleed glass plate on a darker field, 24px margin",
+      "Receiver name as the only large object (tight 0.92 tracking)",
+      "Outlined stadium capsules; Continuity Blue only when a control is on",
+      "Status in a top-right pill plus one muted line under the name",
+      "PIN replaces the name at the same optical center; capsules hide"
+    ],
+    "rules": [
+      {
+        "name": "The Blue-When-On Rule",
+        "body": "Continuity Blue fills a control only while that control is on. Idle chrome stays graphite.",
+        "section": "colors"
+      },
+      {
+        "name": "The Pill-Dot Rule",
+        "body": "Wait, pair, live, and fail exist only as the status-pill dot (plus its soft pulse glow). They do not color the plate, the name, or the capsules.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tight-Name Rule",
+        "body": "Only the receiver name is tracked (glyph advance × 0.92) and cut medium/semibold. PIN, status, and controls stay untracked regular text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two-Face Rule",
+        "body": "Display cuts for the name and PIN; Text cuts for everything else. Do not mix in a third family.",
+        "section": "typography"
+      },
+      {
+        "name": "The Optical-Center Rule",
+        "body": "The name is the object at ~42% of the plate. A PIN replaces it at ~28% of the plate. Nothing else is allowed to become large.",
+        "section": "layout"
+      },
+      {
+        "name": "The Sheen-Not-Blur Rule",
+        "body": "Frost is a white gradient on opaque plate color. Do not introduce backdrop-filter, glass photography, or extra shadow layers on capsules.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Outlined-Capsule Rule",
+        "body": "Off = rest fill + 1px hairline. On = solid blue, no outline. Icons stay strokes, not fills and not font glyphs.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do keep the plate full-bleed with a 24px field margin and a 28px corner.",
+      "Do treat the receiver name as the only large object; use AirScreen as the spec example name.",
+      "Do draw floor capsules outlined at rest and Continuity Blue only when on.",
+      "Do let a PIN replace the name and hide the capsules.",
+      "Do use stroked GDI+ marks (pencil, display, pin, lock) at 14px for capsule icons."
+    ],
+    "donts": [
+      "Don't draw fake macOS traffic lights or an Apple logo.",
+      "Don't put Continuity Blue on idle or waiting chrome.",
+      "Don't introduce a third type family, kickers, or uppercase eyebrows.",
+      "Don't fill the plate with settings; waiting is a display with no signal.",
+      "Don't box PIN digits or add extra cards — one plate, one object."
+    ]
+  }
+}
