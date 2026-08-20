@@ -1,0 +1,22 @@
+# AirScreen build artifacts
+/build/
+/out/
+/.vs/
+/CMakeSettings.json
+*.user
+*.suo
+*.sdf
+*.opensdf
+/third_party/prebuilt/
+/third_party/vcpkg/
+/third_party/vcpkg_installed/
+/installer/Output/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+__pycache__/
+*.pyc
+!third_party/uxplay/**
+!third_party/libplist/**
