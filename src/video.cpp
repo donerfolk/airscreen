@@ -1,16 +1,24 @@
 #include "video.h"
+#include "settings.h"
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
 #include <d3d11_4.h>
+#include <dxgi.h>
 #include <dxgi1_3.h>
+#include <dxgi1_5.h>
 #include <d3dcompiler.h>
+#include <avrt.h>
 #include <wrl/client.h>
 #include <vector>
 #include <cstring>
 #include <cmath>
+#include <cstdio>
+#include <mutex>
+
+#pragma comment(lib, "avrt.lib")
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -19,6 +27,7 @@ extern "C" {
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 #include <libavutil/pixdesc.h>
+#include <libavutil/error.h>
 }
 
 using Microsoft::WRL::ComPtr;
@@ -82,23 +91,50 @@ VideoPipeline::~VideoPipeline() {
 }
 
 bool VideoPipeline::init(HWND hwnd) {
-    std::lock_guard<std::mutex> lock(mu_);
-    hwnd_ = hwnd;
-    if (!create_device()) {
-        return false;
+    stop_worker();
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        hwnd_ = hwnd;
+        if (!create_device()) {
+            return false;
+        }
+        if (!create_swapchain()) {
+            return false;
+        }
+        if (!create_pipeline()) {
+            return false;
+        }
     }
-    if (!create_swapchain()) {
-        return false;
+    start_worker();
+    return true;
+}
+
+void VideoPipeline::stop_worker() {
+    worker_run_ = false;
+    q_cv_.notify_all();
+    if (worker_.joinable()) {
+        worker_.join();
     }
-    return create_pipeline();
+    std::lock_guard<std::mutex> qlock(q_mu_);
+    q_.clear();
+}
+
+void VideoPipeline::start_worker() {
+    if (worker_run_ || worker_.joinable()) {
+        return;
+    }
+    worker_run_ = true;
+    worker_ = std::thread([this] { decode_loop(); });
 }
 
 void VideoPipeline::shutdown() {
+    stop_worker();
     std::lock_guard<std::mutex> lock(mu_);
     decode_close();
-    if (waitable_) {
-        CloseHandle(waitable_);
-        waitable_ = nullptr;
+    if (staging_) {
+        staging_->Release();
+        staging_ = nullptr;
+        staging_w_ = staging_h_ = 0;
     }
     if (srv_y_) {
         srv_y_->Release();
@@ -169,10 +205,12 @@ void VideoPipeline::resize() {
         rtv_->Release();
         rtv_ = nullptr;
     }
-    HRESULT hr = swapchain_->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
+    UINT flags = tearing_ ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+    HRESULT hr = swapchain_->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, flags);
     if (FAILED(hr)) {
         return;
     }
+    present_cw_ = present_ch_ = 0;
     ID3D11Texture2D *back = nullptr;
     if (SUCCEEDED(swapchain_->GetBuffer(0, IID_PPV_ARGS(&back)))) {
         device_->CreateRenderTargetView(back, nullptr, &rtv_);
@@ -181,6 +219,10 @@ void VideoPipeline::resize() {
 }
 
 void VideoPipeline::flush() {
+    {
+        std::lock_guard<std::mutex> qlock(q_mu_);
+        q_.clear();
+    }
     std::lock_guard<std::mutex> lock(mu_);
     if (av_codec_) {
         avcodec_flush_buffers((AVCodecContext *) av_codec_);
@@ -188,13 +230,17 @@ void VideoPipeline::flush() {
 }
 
 void VideoPipeline::clear() {
+    {
+        std::lock_guard<std::mutex> qlock(q_mu_);
+        q_.clear();
+    }
     std::lock_guard<std::mutex> lock(mu_);
     has_frame_ = false;
     if (rtv_ && ctx_ && swapchain_) {
         float black[4] = {0.07f, 0.08f, 0.10f, 1};
         ctx_->OMSetRenderTargets(1, &rtv_, nullptr);
         ctx_->ClearRenderTargetView(rtv_, black);
-        swapchain_->Present(0, 0);
+        swapchain_->Present(0, tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0);
     }
 }
 
@@ -202,9 +248,14 @@ void VideoPipeline::set_cover(bool cover) {
     cover_.store(cover);
 }
 
+void VideoPipeline::set_first_frame_fn(std::function<void()> fn) {
+    std::lock_guard<std::mutex> lock(mu_);
+    first_frame_fn_ = std::move(fn);
+}
+
 void VideoPipeline::set_source_size(int width, int height) {
-    width_ = width;
-    height_ = height;
+    width_.store(width);
+    height_.store(height);
 }
 
 bool VideoPipeline::create_device() {
@@ -238,21 +289,34 @@ bool VideoPipeline::create_swapchain() {
     ComPtr<IDXGIFactory2> factory;
     adapter->GetParent(IID_PPV_ARGS(&factory));
 
+    BOOL allow_tearing = FALSE;
+    ComPtr<IDXGIFactory5> factory5;
+    if (SUCCEEDED(factory.As(&factory5))) {
+        factory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allow_tearing,
+                                     sizeof(allow_tearing));
+    }
+    tearing_ = allow_tearing != FALSE;
+
     DXGI_SWAP_CHAIN_DESC1 desc = {};
     desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     desc.SampleDesc.Count = 1;
     desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     desc.BufferCount = 2;
     desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    desc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+    desc.Flags = tearing_ ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
     desc.Scaling = DXGI_SCALING_STRETCH;
 
     HRESULT hr = factory->CreateSwapChainForHwnd(device_, hwnd_, &desc, nullptr, nullptr, &swapchain_);
     if (FAILED(hr)) {
-        desc.Flags = 0;
         desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
         hr = factory->CreateSwapChainForHwnd(device_, hwnd_, &desc, nullptr, nullptr, &swapchain_);
+        if (FAILED(hr) && tearing_) {
+            tearing_ = false;
+            desc.Flags = 0;
+            hr = factory->CreateSwapChainForHwnd(device_, hwnd_, &desc, nullptr, nullptr, &swapchain_);
+        }
         if (FAILED(hr)) {
+            tearing_ = false;
             return false;
         }
     }
@@ -261,7 +325,6 @@ bool VideoPipeline::create_swapchain() {
     ComPtr<IDXGISwapChain2> sc2;
     if (SUCCEEDED(swapchain_->QueryInterface(IID_PPV_ARGS(&sc2)))) {
         sc2->SetMaximumFrameLatency(1);
-        waitable_ = sc2->GetFrameLatencyWaitableObject();
     }
 
     ID3D11Texture2D *back = nullptr;
@@ -359,6 +422,32 @@ bool VideoPipeline::ensure_nv12(int w, int h) {
     return srv_y_ && srv_uv_;
 }
 
+bool VideoPipeline::ensure_staging(int w, int h) {
+    if (staging_ && staging_w_ == w && staging_h_ == h) {
+        return true;
+    }
+    if (staging_) {
+        staging_->Release();
+        staging_ = nullptr;
+    }
+    D3D11_TEXTURE2D_DESC td = {};
+    td.Width = w;
+    td.Height = h;
+    td.MipLevels = 1;
+    td.ArraySize = 1;
+    td.Format = DXGI_FORMAT_NV12;
+    td.SampleDesc.Count = 1;
+    td.Usage = D3D11_USAGE_STAGING;
+    td.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    if (FAILED(device_->CreateTexture2D(&td, nullptr, &staging_))) {
+        staging_w_ = staging_h_ = 0;
+        return false;
+    }
+    staging_w_ = w;
+    staging_h_ = h;
+    return true;
+}
+
 bool VideoPipeline::decode_init(bool hevc) {
     decode_close();
     hevc_ = hevc;
@@ -368,9 +457,10 @@ bool VideoPipeline::decode_init(bool hevc) {
     }
     AVCodecContext *ctx = avcodec_alloc_context3(codec);
     ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
-    ctx->flags2 |= AV_CODEC_FLAG2_FAST;
+    ctx->flags2 |= AV_CODEC_FLAG2_FAST | AV_CODEC_FLAG2_SHOW_ALL;
     ctx->thread_count = 1;
     ctx->pkt_timebase = AVRational{1, 1000000};
+    ctx->extra_hw_frames = 8;
 
     AVBufferRef *hw = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_D3D11VA);
     if (hw) {
@@ -419,27 +509,92 @@ void VideoPipeline::decode_close() {
 }
 
 void VideoPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns, bool hevc) {
-    (void) ntp_ns;
-    std::lock_guard<std::mutex> lock(mu_);
-    if (!device_ || len <= 0 || !data) {
+    if (!data || len <= 0 || !worker_run_) {
         return;
     }
+    EncodedPacket pkt;
+    pkt.data.assign(data, data + len);
+    pkt.ntp_ns = ntp_ns;
+    pkt.hevc = hevc;
+    {
+        std::lock_guard<std::mutex> qlock(q_mu_);
+        if (q_.size() >= kMaxQueued) {
+            q_.pop_front();
+        }
+        q_.push_back(std::move(pkt));
+    }
+    q_cv_.notify_one();
+}
+
+void VideoPipeline::decode_loop() {
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+    DWORD mmcss_idx = 0;
+    HANDLE mmcss = AvSetMmThreadCharacteristicsW(L"Games", &mmcss_idx);
+    if (mmcss) {
+        AvSetMmThreadPriority(mmcss, AVRT_PRIORITY_HIGH);
+    }
+    while (worker_run_) {
+        EncodedPacket pkt;
+        {
+            std::unique_lock<std::mutex> qlock(q_mu_);
+            q_cv_.wait(qlock, [this] { return !q_.empty() || !worker_run_; });
+            if (!worker_run_) {
+                break;
+            }
+            pkt = std::move(q_.front());
+            q_.pop_front();
+        }
+        decode_packet(pkt);
+    }
+    if (mmcss) {
+        AvRevertMmThreadCharacteristics(mmcss);
+    }
+}
+
+void VideoPipeline::decode_packet(const EncodedPacket &pkt) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (!device_ || pkt.data.empty()) {
+        return;
+    }
+    const uint8_t *data = pkt.data.data();
+    int len = (int) pkt.data.size();
+    bool hevc = pkt.hevc;
     if (!av_codec_ || hevc_ != hevc) {
         if (!decode_init(hevc)) {
             return;
         }
     }
     auto *ctx = (AVCodecContext *) av_codec_;
-    auto *pkt = (AVPacket *) av_pkt_;
+    auto *avpkt = (AVPacket *) av_pkt_;
     auto *frame = (AVFrame *) av_frame_;
-    av_packet_unref(pkt);
-    if (av_new_packet(pkt, len) < 0) {
+    av_packet_unref(avpkt);
+    if (av_new_packet(avpkt, len) < 0) {
         return;
     }
-    memcpy(pkt->data, data, (size_t) len);
-    int send = avcodec_send_packet(ctx, pkt);
-    av_packet_unref(pkt);
-    if (send < 0) {
+    memcpy(avpkt->data, data, (size_t) len);
+    int send = avcodec_send_packet(ctx, avpkt);
+    if (send < 0 && send != AVERROR(EAGAIN)) {
+        decode_init(hevc);
+        ctx = (AVCodecContext *) av_codec_;
+        avpkt = (AVPacket *) av_pkt_;
+        frame = (AVFrame *) av_frame_;
+        if (!ctx || av_new_packet(avpkt, len) < 0) {
+            return;
+        }
+        memcpy(avpkt->data, data, (size_t) len);
+        send = avcodec_send_packet(ctx, avpkt);
+        if (send < 0 && send != AVERROR(EAGAIN)) {
+            char es[64];
+            av_strerror(send, es, sizeof(es));
+            char line[96];
+            snprintf(line, sizeof(line), "decode send failed: %s", es);
+            append_log(line);
+            av_packet_unref(avpkt);
+            return;
+        }
+    }
+    av_packet_unref(avpkt);
+    if (!ctx) {
         return;
     }
     while (avcodec_receive_frame(ctx, frame) == 0) {
@@ -449,8 +604,8 @@ void VideoPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns, bool h
             av_frame_unref(frame);
             continue;
         }
-        width_ = w;
-        height_ = h;
+        width_.store(w);
+        height_.store(h);
         if (!ensure_nv12(w, h)) {
             av_frame_unref(frame);
             continue;
@@ -464,17 +619,9 @@ void VideoPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns, bool h
             }
             ctx_->CopySubresourceRegion(nv12_, 0, 0, 0, 0, tex, (UINT) index, nullptr);
         } else if (frame->format == AV_PIX_FMT_NV12) {
-            D3D11_BOX box = {0, 0, 0, (UINT) w, (UINT) h, 1};
-            // staging upload
-            D3D11_TEXTURE2D_DESC td = {};
-            nv12_->GetDesc(&td);
-            td.Usage = D3D11_USAGE_STAGING;
-            td.BindFlags = 0;
-            td.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-            ID3D11Texture2D *staging = nullptr;
-            if (SUCCEEDED(device_->CreateTexture2D(&td, nullptr, &staging))) {
+            if (ensure_staging(w, h)) {
                 D3D11_MAPPED_SUBRESOURCE map = {};
-                if (SUCCEEDED(ctx_->Map(staging, 0, D3D11_MAP_WRITE, 0, &map))) {
+                if (SUCCEEDED(ctx_->Map(staging_, 0, D3D11_MAP_WRITE, 0, &map))) {
                     for (int y = 0; y < h; ++y) {
                         memcpy((uint8_t *) map.pData + y * map.RowPitch, frame->data[0] + y * frame->linesize[0], w);
                     }
@@ -482,33 +629,28 @@ void VideoPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns, bool h
                     for (int y = 0; y < h / 2; ++y) {
                         memcpy(dst_uv + y * map.RowPitch, frame->data[1] + y * frame->linesize[1], w);
                     }
-                    ctx_->Unmap(staging, 0);
-                    ctx_->CopyResource(nv12_, staging);
+                    ctx_->Unmap(staging_, 0);
+                    ctx_->CopyResource(nv12_, staging_);
                 }
-                staging->Release();
             }
-            (void) box;
         } else if (frame->format == AV_PIX_FMT_YUV420P || frame->format == AV_PIX_FMT_YUVJ420P) {
             upload_yuv420(frame->data[0], frame->linesize[0], frame->data[1], frame->data[2], frame->linesize[1], w, h);
         }
-        has_frame_ = true;
+        bool first = !has_frame_.exchange(true);
         present_nv12();
         av_frame_unref(frame);
+        if (first && first_frame_fn_) {
+            first_frame_fn_();
+        }
     }
 }
 
 void VideoPipeline::upload_yuv420(const uint8_t *y, int y_stride, const uint8_t *u, const uint8_t *v, int uv_stride, int w, int h) {
-    D3D11_TEXTURE2D_DESC td = {};
-    nv12_->GetDesc(&td);
-    td.Usage = D3D11_USAGE_STAGING;
-    td.BindFlags = 0;
-    td.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    ID3D11Texture2D *staging = nullptr;
-    if (FAILED(device_->CreateTexture2D(&td, nullptr, &staging))) {
+    if (!ensure_staging(w, h)) {
         return;
     }
     D3D11_MAPPED_SUBRESOURCE map = {};
-    if (SUCCEEDED(ctx_->Map(staging, 0, D3D11_MAP_WRITE, 0, &map))) {
+    if (SUCCEEDED(ctx_->Map(staging_, 0, D3D11_MAP_WRITE, 0, &map))) {
         for (int row = 0; row < h; ++row) {
             memcpy((uint8_t *) map.pData + row * map.RowPitch, y + row * y_stride, w);
         }
@@ -522,10 +664,9 @@ void VideoPipeline::upload_yuv420(const uint8_t *y, int y_stride, const uint8_t 
                 dst[x * 2 + 1] = sv[x];
             }
         }
-        ctx_->Unmap(staging, 0);
-        ctx_->CopyResource(nv12_, staging);
+        ctx_->Unmap(staging_, 0);
+        ctx_->CopyResource(nv12_, staging_);
     }
-    staging->Release();
 }
 
 void VideoPipeline::present_nv12() {
@@ -550,8 +691,10 @@ void VideoPipeline::present_nv12() {
     ctx_->ClearRenderTargetView(rtv_, black);
 
     float sx = 1, sy = 1;
-    if (width_ > 0 && height_ > 0) {
-        float va = (float) width_ / (float) height_;
+    int src_w = width_.load();
+    int src_h = height_.load();
+    if (src_w > 0 && src_h > 0) {
+        float va = (float) src_w / (float) src_h;
         float wa = (float) cw / (float) ch;
         if (cover_.load()) {
             if (wa > va) {
@@ -566,7 +709,7 @@ void VideoPipeline::present_nv12() {
         }
     }
 
-    if (cbuf_) {
+    if (cbuf_ && (cw != present_cw_ || ch != present_ch_ || sx != letter_x_ || sy != letter_y_)) {
         D3D11_MAPPED_SUBRESOURCE map = {};
         if (SUCCEEDED(ctx_->Map(cbuf_, 0, D3D11_MAP_WRITE_DISCARD, 0, &map))) {
             float *f = (float *) map.pData;
@@ -576,6 +719,12 @@ void VideoPipeline::present_nv12() {
             f[3] = 0;
             ctx_->Unmap(cbuf_, 0);
         }
+        present_cw_ = cw;
+        present_ch_ = ch;
+        letter_x_ = sx;
+        letter_y_ = sy;
+    }
+    if (cbuf_) {
         ctx_->VSSetConstantBuffers(0, 1, &cbuf_);
     }
 
@@ -593,10 +742,14 @@ void VideoPipeline::present_nv12() {
     ID3D11ShaderResourceView *none[2] = {};
     ctx_->PSSetShaderResources(0, 2, none);
 
-    if (waitable_) {
-        WaitForSingleObject(waitable_, 8);
+    HRESULT hr = swapchain_->Present(0, tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0);
+    if (hr == DXGI_ERROR_INVALID_CALL && tearing_) {
+        tearing_ = false;
+        hr = swapchain_->Present(0, 0);
     }
-    swapchain_->Present(0, 0);
+    if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
+        append_log("DXGI device lost during present");
+    }
 }
 
 } // namespace airscreen

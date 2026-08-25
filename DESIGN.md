@@ -2,14 +2,14 @@
 name: AirScreen
 description: Continuity plate idle shell — full-bleed glass, the receiver name is the object.
 colors:
-  field: "#1d1d1f"
+  field: "#0a0a0c"
   plate: "#2c2c2e"
   plate-hi: "#3a3a3c"
-  capsule-rest: "#303032"
-  rim: "#606064"
+  capsule-rest: "#1c1c1e"
+  rim: "#8e8e93"
   hairline: "#48484a"
   label: "#f5f5f7"
-  secondary: "#a1a1a6"
+  secondary: "#86868b"
   on-ink: "#ffffff"
   blue: "#0a84ff"
   wait: "#8e8e93"
@@ -19,10 +19,10 @@ colors:
 typography:
   display:
     fontFamily: "SF Pro Display Medium, SF Pro Display Semibold, SF Pro Display, Segoe UI Variable Display Semibold, Segoe UI Variable Display, Segoe UI"
-    fontSize: "clamp(36px, 8.2vw, 72px)"
+    fontSize: "clamp(40px, 14.3vw, 84px)"
     fontWeight: 600
-    lineHeight: 1.35
-    letterSpacing: "-0.08em"
+    lineHeight: 1.28
+    letterSpacing: "-0.10em"
   pin:
     fontFamily: "SF Pro Display, Segoe UI Variable Display, Segoe UI"
     fontSize: "clamp(56px, 16vw, 96px)"
@@ -133,9 +133,9 @@ This is Apple Continuity language on a native Win32 client, not a macOS window r
 Sizes are device-independent pixels at 96 DPI (`MulDiv(value, dpi, 96)`). The default window is 1100×720; the shell will not shrink below 720×480.
 
 **Key Characteristics:**
-- Full-bleed glass plate on a darker field, 24px margin
-- Receiver name as the only large object (tight 0.92 tracking)
-- Outlined stadium capsules; Continuity Blue only when a control is on
+- Full-bleed glass plate on a near-black field, 24px margin — plate clearly floats
+- Receiver name as the only large object (tracking 0.90, clamp 40–84px)
+- Recessed stadium capsules; Continuity Blue only when a control is on
 - Status in a top-right pill plus one muted line under the name
 - PIN replaces the name at the same optical center; capsules hide
 
@@ -153,14 +153,14 @@ Graphite Continuity palette: two stacked darks, one blue that appears only as an
 - **Fail Red** (`{colors.fail}`): Start-failed pill dot.
 
 ### Neutral
-- **Graphite Field** (`{colors.field}`): Window client fill around the plate.
-- **Frosted Plate** (`{colors.plate}`): The glass card, the app-mark body, and the live-overlay gear at rest.
-- **Plate Lift** (`{colors.plate-hi}`): Waiting pill fill, capsule hover fill, gear hover fill.
-- **Capsule Rest** (`{colors.capsule-rest}`): Off-state capsule fill (slightly darker than the plate so the outline reads).
-- **Glass Rim** (`{colors.rim}`): 1.15px plate stroke.
-- **Hairline** (`{colors.hairline}`): 1px capsule outline when off.
+- **Graphite Field** (`{colors.field}`): Near-black window fill so the plate floats (`#0a0a0c`).
+- **Frosted Plate** (`{colors.plate}`): The glass card base; painted with a slight vertical lift and strong frost sheen.
+- **Plate Lift** (`{colors.plate-hi}`): Capsule hover fill, gear hover fill.
+- **Capsule Rest** (`{colors.capsule-rest}`): Recessed off-state capsule fill (`#1c1c1e`), darker than the plate so controls read as sunk Control Center tiles.
+- **Glass Rim** (`{colors.rim}`): Plate stroke (`#8e8e93`) — bright enough to read as a glass lip.
+- **Hairline** (`{colors.hairline}`): Capsule outline when off (lifts toward rim on hover).
 - **Label** (`{colors.label}`): Name, PIN, pill text, on-state / hover ink.
-- **Secondary Label** (`{colors.secondary}`): Wordmark, status line, how-to line, off-state capsule ink.
+- **Secondary Label** (`{colors.secondary}`): Wordmark, status line, how-to line, off-state capsule ink (`#86868b`).
 - **On Ink** (`{colors.on-ink}`): Name hover, and ink on a blue capsule.
 
 ### Named Rules
@@ -178,14 +178,14 @@ Graphite Continuity palette: two stacked darks, one blue that appears only as an
 Probe order in the shell: display medium/semibold cuts first; if the face name does not contain “Medium” or “Semibold”, the name uses bold on the regular display cut. PIN uses the regular display face, not the medium cut, and does not apply tracking.
 
 ### Hierarchy
-- **Display** (600, clamp 36–72px from inner width / 8.2, line-height 1.35, tracking 0.92 / `-0.08em`): Receiver name, centered, slightly above geometric middle.
-- **PIN** (400, max(56px, inner width / 6.2)): Pairing digits; owns the plate; no tracking.
+- **Display** (600, clamp 40–84px from inner width / 7.0, line-height 1.28, tracking 0.90 / `-0.10em`): Receiver name, centered at ~38% of plate height.
+- **PIN** (400, max(64px, inner width / 5.6)): Pairing digits; owns the plate at ~24% height; no tracking; hint 14px beneath.
 - **Title** (400, 13px): Wordmark “AirScreen” top-left; how-to line under status.
 - **Body** (400, 17px): Status under the name (“Waiting for iPhone”) and the PIN hint (“Enter this PIN on your iPhone”).
 - **Label** (400, 12px): Status-pill text and capsule labels.
 
 ### Named Rules
-**The Tight-Name Rule.** Only the receiver name is tracked (glyph advance × 0.92) and cut medium/semibold. PIN, status, and controls stay untracked regular text.
+**The Tight-Name Rule.** Only the receiver name is tracked (glyph advance × 0.90) and cut medium/semibold. PIN, status, and controls stay untracked regular text.
 
 **The Two-Face Rule.** Display cuts for the name and PIN; Text cuts for everything else. Do not mix in a third family.
 
@@ -193,30 +193,31 @@ Probe order in the shell: display medium/semibold cuts first; if the face name d
 
 Client area is the field. The plate is inset `{spacing.field}` (24px) on all sides. If that plate would be narrower than 200px it becomes 92% of the window; if shorter than 160px it becomes 88% of the height. Inner content inset is `{spacing.pad}` (36px) left/right/bottom and `{spacing.plate-top}` (22px) at the top.
 
-Header row: wordmark left, status pill right (108×28px), sharing a 28px-tall band. The receiver name sits at 42% of the plate height. Status follows 4px under the name; the how-to line 6px under that, and lifts to 30px above the capsules if it would collide. Capsules are a 44px-tall floor row, 10px gaps, equal width, minimum 96px each, hidden while a PIN is showing or the window is fullscreen.
+Header row: wordmark left, status pill right (108×28px), sharing a 28px-tall band. The receiver name sits at ~38% of the plate height. Status follows 12px under the name; the how-to line 10px under that, and lifts to 30px above the capsules if it would collide. Capsules are a 44px-tall floor row, 10px gaps, equal width, minimum 96px each, hidden while a PIN is showing or the window is fullscreen.
 
 The live video surface is D3D11 and fills the client when connected; this document does not specify that picture. The 40px circular gear is live-overlay chrome only (12px from the top-right of the client), hidden on the idle plate.
 
 ### Named Rules
-**The Optical-Center Rule.** The name is the object at ~42% of the plate. A PIN replaces it at ~28% of the plate. Nothing else is allowed to become large.
+**The Optical-Center Rule.** The name is the object at ~38% of the plate. A PIN replaces it at ~24% of the plate. Nothing else is allowed to become large.
 
 ## Elevation & Depth
 
-Depth is tonal stacking plus a soft umbra and a painted sheen — not drop-shadow chrome and not backdrop blur. The field is a flat fill. The plate sits on eight stacked black rounds (alpha 7–14, shifted down and slightly expanded). Inside the plate, a vertical white gradient (alpha 56 → 0) covers the top 58% of the height, with a brighter 18px top-edge wash (alpha 70 → 0). A 1.15px `{colors.rim}` stroke seals the glass. The pill dot pulses: fill alpha 140–255 and a 3px halo alpha 30–70, 40ms timer, sine over ~430ms.
+Depth is tonal stacking plus a visible umbra and painted frost — not drop-shadow chrome and not backdrop blur. The field is near-black. The plate sits on fourteen stacked black rounds (alpha ~11–50, shifted down and expanded) so it clearly floats. Inside the plate, a vertical white gradient (alpha 110 → 0) covers the top 62% of the height, with a brighter 22px top-edge wash (alpha 150 → 0) and a 1.25px inner top hairline (white alpha 70). A 1.35px `{colors.rim}` stroke seals the glass. The pill is recessed (`#242426`) with a hairline; its dot pulses with a readable glow.
 
 ### Shadow Vocabulary
-- **Plate umbra** (eight GDI+ rounds, black alpha 7–14, y += i×1.1): Under the plate only.
+- **Plate umbra** (fourteen GDI+ rounds, black alpha ~11–50, y += i×1.6): Under the plate only.
 - **Dot glow** (ellipse, status color, pulse alpha): Around the pill dot only.
+- **ON capsule sheen** (white alpha 90 → 0 over top 50%): Lift on Continuity Blue fills only.
 
 ### Named Rules
-**The Sheen-Not-Blur Rule.** Frost is a white gradient on opaque plate color. Do not introduce backdrop-filter, glass photography, or extra shadow layers on capsules.
+**The Sheen-Not-Blur Rule.** Frost is a white gradient on opaque plate color — strong enough to read as glass. Do not introduce backdrop-filter, glass photography, or extra shadow layers on every control.
 
 ## Shapes
 
-The plate is a 28px-radius round rect — the only large corner. Every control is a stadium: radius = half its height (pill 14px, capsules 22px). The live gear is a circle (window region = size). Capsule icons are 14px stroked GDI+ marks (round caps and joins, stroke ≈ 1.4px): pencil, display, pin, lock. The app mark is a rounded display body in plate color with a pale glass screen — not a logo lockup.
+The plate is a 28px-radius round rect — the only large corner. Every control is a stadium: radius = half its height (pill 14px, capsules 22px). The live gear is a circle (window region = size) with a 1px `{colors.rim}` hairline (brighter on hover). Capsule icons are 14px stroked GDI+ marks (round caps and joins, stroke ≈ 1.25px), optically lifted 0.5px in the stadium: pencil, display, pin, lock. The app mark is a rounded display body in plate lift → plate dark with a pale frosted glass screen and hairline rim — not a logo lockup, not amber chrome.
 
 ### Named Rules
-**The Outlined-Capsule Rule.** Off = rest fill + 1px hairline. On = solid blue, no outline. Icons stay strokes, not fills and not font glyphs.
+**The Outlined-Capsule Rule.** Off = rest fill + 1px hairline (rim lifts on hover). On = solid blue + quiet top sheen, no outline. Icons stay strokes, not fills and not font glyphs.
 
 ## Components
 
@@ -225,9 +226,9 @@ Floor capsules are the only idle buttons.
 
 - **Shape:** Stadium (radius 22px), height 44px, min width 96px
 - **Off:** `{colors.capsule-rest}` fill, `{colors.hairline}` 1px stroke, `{colors.secondary}` ink
-- **Hover:** `{colors.plate-hi}` fill, same stroke, `{colors.label}` ink
-- **On:** `{colors.blue}` fill, no stroke, `{colors.on-ink}` ink
-- **Content:** 14px stroke icon, 6px gap, 12px label. Labels: Rename, Full Screen, Always on Top, Require PIN. Rename never takes the on fill.
+- **Hover:** `{colors.plate-hi}` fill, lifted `{colors.rim}` stroke, `{colors.label}` ink
+- **On:** `{colors.blue}` fill, quiet white top sheen, no stroke, `{colors.on-ink}` ink
+- **Content:** 14px stroke icon (≈1.25px, optically −0.5px Y), 6px gap, 12px label. Labels: Rename, Full Screen, Always on Top, Require PIN. Rename never takes the on fill.
 
 ### Chips
 - **Style:** Status pill, 108×28px stadium, `{colors.plate-hi}` fill, no stroke
@@ -253,10 +254,10 @@ The product. Centered, tracked, display medium/semibold. Example copy for specs:
 When present, the name, how-to, and capsules hide. Digits are regular display type, centered, with the 17px hint beneath. Pill switches to Pairing / amber.
 
 ### App mark
-16px / 32px GDI+ icon: rounded display body in plate color, pale glass screen. Used for the window and tray. Not a wordmark replacement.
+16px / 32px GDI+ icon (and `scripts/make-icon.py` → `app.ico` / `logo.png`): rounded plate body (plate-hi → darker plate), pale frosted glass screen with top wash, hairline rim. Used for the window and tray. Not a wordmark replacement.
 
 ### Gear (live overlay)
-40px circle, `{colors.plate}` at rest, `{colors.plate-hi}` on hover, `{colors.label}` glyph. Idle waiting does not show it. Video owns the window when live.
+40px circle, `{colors.plate}` at rest, `{colors.plate-hi}` on hover, 1px rim (`{colors.rim}` / brighter on hover), `{colors.label}` MDL2 glyph optically centered (~17px). Idle waiting does not show it. Video owns the window when live.
 
 ## Do's and Don'ts
 

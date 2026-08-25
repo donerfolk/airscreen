@@ -247,6 +247,8 @@ raop_rtp_init_sockets(raop_rtp_t *raop_rtp, int use_ipv6)
     /* Set socket descriptors */
     raop_rtp->csock = csock;
     raop_rtp->dsock = dsock;
+    netutils_tune_udp_rcvbuf(csock);
+    netutils_tune_udp_rcvbuf(dsock);
 
     /* Set port values */
     raop_rtp->control_lport = cport;

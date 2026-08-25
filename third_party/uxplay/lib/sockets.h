@@ -42,7 +42,7 @@ typedef int socklen_t;
 #define IOCTLSOCKET ioctlsocket
 #ifndef SOL_TCP
 #define SOL_TCP IPPROTO_TCP
-#endif 
+#endif
 #else
 
 #define CLOSESOCKET close
@@ -53,5 +53,10 @@ typedef int socklen_t;
 #define SOCKET_ERRORNAME(name)  name
 #define SOCKET_ERROR_STRING(errnum) strerror(errnum)
 #endif
+
+/* SO_RCVTIMEO: POSIX often EAGAIN; Windows WSAETIMEDOUT (10060). Never treat as fatal. */
+#define SOCKET_AGAIN(err) \
+    ((err) == SOCKET_ERRORNAME(EAGAIN) || (err) == SOCKET_ERRORNAME(EWOULDBLOCK) || \
+     (err) == SOCKET_ERRORNAME(EINTR) || (err) == SOCKET_ERRORNAME(ETIMEDOUT))
 
 #endif

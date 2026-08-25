@@ -20,6 +20,8 @@ void netutils_cleanup();
 void netutils_set_peer_to_peer(int enabled);
 
 int netutils_init_socket(unsigned short *port, int use_ipv6, int use_udp);
+void netutils_tune_tcp(int fd);
+void netutils_tune_udp_rcvbuf(int fd);
 unsigned char *netutils_get_address(void *sockaddr, int *length, unsigned int *zone_id, unsigned short *port);
 int netutils_parse_address(int family, const char *src, void *dst, int dstlen);
 

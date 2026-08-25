@@ -155,6 +155,7 @@ target_link_libraries(AirScreen PRIVATE
     advapi32
     dwmapi
     gdiplus
+    avrt
 )
 if (MSVC)
     set_source_files_properties(

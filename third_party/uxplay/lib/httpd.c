@@ -305,6 +305,7 @@ httpd_accept_connection(httpd_t *httpd, int server_fd, int is_ipv6)
                    sock_err, SOCKET_ERROR_STRING(sock_err));
         return -1;
     }
+    netutils_tune_tcp(fd);
 
     local_saddrlen = sizeof(local_saddr);
     ret = getsockname(fd, (struct sockaddr *)&local_saddr, &local_saddrlen);
@@ -512,10 +513,11 @@ httpd_thread(void *arg)
                         httpd_remove_connection(httpd, connection, 0);
                         break;
                     } else if (ret == -1) {
-                        if (errno == SOCKET_ERRORNAME(EAGAIN) || errno == SOCKET_ERRORNAME(EWOULDBLOCK) || errno == SOCKET_ERRORNAME(EINTR)) {
+                        int sock_err = SOCKET_GET_ERROR();
+                        if (SOCKET_AGAIN(sock_err)) {
                             continue;
                         } else {
-                            httpd_remove_connection(httpd, connection, SOCKET_GET_ERROR());
+                            httpd_remove_connection(httpd, connection, sock_err);
                             break;
                         }
                     } else {
@@ -536,10 +538,11 @@ httpd_thread(void *arg)
                     httpd_remove_connection(httpd, connection, 0);
                     continue;
                 } else if (ret == -1) {
-                    if (errno == SOCKET_ERRORNAME(EAGAIN) || errno == SOCKET_ERRORNAME(EWOULDBLOCK) || errno == SOCKET_ERRORNAME(EINTR)) {
+                    int sock_err = SOCKET_GET_ERROR();
+                    if (SOCKET_AGAIN(sock_err)) {
                         continue;
                     } else {
-                        httpd_remove_connection(httpd, connection, SOCKET_GET_ERROR());
+                        httpd_remove_connection(httpd, connection, sock_err);
                         continue;
                     }
                 } else {

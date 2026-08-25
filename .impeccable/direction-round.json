@@ -108,11 +108,11 @@
   "canon": true,
   "canonCard": {
     "label": "The category standard",
-    "thesis": "LonelyScreen-class receiver: status, name field, and a settings toolbar, at full craft.",
+    "thesis": "Category-standard AirPlay receiver: status, name field, and a settings toolbar, at full craft.",
     "palette": ["#111827", "#ffffff", "#2563eb"],
     "materials": ["flat panels", "standard buttons", "system chrome"],
     "viewport": "Dark app chrome. Name + status. Toolbar: Rename, Fullscreen, Always on top, PIN.",
-    "risk": "Indistinguishable from LonelyScreen by design.",
+    "risk": "Indistinguishable from generic AirPlay receiver UIs by design.",
     "comp": ".impeccable/mocks/decision/canon.webp"
   },
   "steer": true

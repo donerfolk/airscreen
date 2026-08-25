@@ -22,7 +22,7 @@ Success: iPhone lists **AirScreen**, tap connects, video and audio play with low
 
 ## Positioning
 
-Same job as LonelyScreen-class apps, original UI and a custom decode/present path (no GStreamer). Protocol from UxPlay (GPLv3).
+Windows AirPlay Screen Mirroring receiver with an original Continuity-style UI and a custom decode/present path (no GStreamer). Protocol from UxPlay (GPLv3).
 
 ## Operating Context
 

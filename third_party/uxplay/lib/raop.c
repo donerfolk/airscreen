@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #include "raop.h"
 #include "raop_rtp.h"
@@ -549,7 +550,8 @@ static void
 conn_destroy(void *ptr) {
     raop_conn_t *conn = ptr;
     raop_t *raop = conn->raop;
-    logger_log(raop->logger, LOGGER_DEBUG, "Destroying connection");
+    logger_log(raop->logger, LOGGER_INFO, "Destroying connection");
+    bool flushed = false;
 
     if (raop->callbacks.conn_destroy) {
         raop->callbacks.conn_destroy(raop->callbacks.cls);
@@ -558,16 +560,22 @@ conn_destroy(void *ptr) {
     if (conn->raop_rtp) {
         /* This is done in case TEARDOWN was not called */
         raop_rtp_destroy(conn->raop_rtp);
+        conn->raop_rtp = NULL;
+        flushed = true;
     }
     if (conn->raop_rtp_mirror) {
         /* This is done in case TEARDOWN was not called */
         raop_rtp_mirror_destroy(conn->raop_rtp_mirror);
+        conn->raop_rtp_mirror = NULL;
+        flushed = true;
     }
     if (conn->raop_ntp) {
         raop_ntp_destroy(conn->raop_ntp);
+        conn->raop_ntp = NULL;
     }
 
-    if (raop->callbacks.video_flush) {
+    /* Flushing on every HTTP close drops the decoder until the next IDR and freezes the picture. */
+    if (flushed && raop->callbacks.video_flush) {
         raop->callbacks.video_flush(raop->callbacks.cls);
     }
 
