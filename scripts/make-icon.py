@@ -1,4 +1,4 @@
-"""Generate AirScreen app.ico — projection screen + lamp (matches src/ui.cpp)."""
+"""Generate AirScreen app.ico — Continuity glass: plate body + pale frosted screen."""
 from __future__ import annotations
 
 import math
@@ -9,11 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "src" / "app"
 
-# 32-unit design space (same as ui.cpp draw_mark).
-COL_BODY = (28, 24, 18, 255)
-COL_RIM = (90, 78, 52, 255)
-COL_SCREEN = (230, 160, 74, 255)
-COL_LAMP = (246, 240, 228, 255)
+DEG90 = math.radians(90)
+DIR_V = (math.sin(DEG90), -math.cos(DEG90))
 
 
 def sd_round_rect(px: float, py: float, x: float, y: float, w: float, h: float, r: float) -> float:
@@ -42,32 +39,53 @@ def blend(dst: list[float], r: float, g: float, b: float, a: float, t: float) ->
     dst[3] = out_a
 
 
+def lerp(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[float, float, float]:
+    t = 0.0 if t < 0 else 1.0 if t > 1 else t
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
+
+
+def axis_t(px: float, py: float, x: float, y: float, w: float, h: float, direction: tuple[float, float]) -> float:
+    dx, dy = direction
+    corners = ((x, y), (x + w, y), (x, y + h), (x + w, y + h))
+    projs = [cx * dx + cy * dy for cx, cy in corners]
+    lo, hi = min(projs), max(projs)
+    if hi <= lo:
+        return 0.0
+    return (px * dx + py * dy - lo) / (hi - lo)
+
+
 def render(size: int) -> bytes:
     px_aa = 4 if size <= 48 else 2
     super_s = size * px_aa
     buf = [[0.0, 0.0, 0.0, 0.0] for _ in range(super_s * super_s)]
-    m = (size / 32.0) * px_aa
-    body = (2 * m, 2 * m, 28 * m, 28 * m, 6 * m)
-    rim_w = max(0.9 * px_aa, 0.75 * m)
-    inner = (
-        body[0] + rim_w,
-        body[1] + rim_w,
-        max(body[2] - rim_w * 2, 1.0),
-        max(body[3] - rim_w * 2, 1.0),
-        max(body[4] - rim_w * 0.7, 1.0),
-    )
-    screen = (6 * m, 8 * m, 20 * m, 12 * m, 2 * m)
-    lamp_cx, lamp_cy, lamp_r = 16 * m, 23.5 * m, 1.5 * m
+    s = float(super_s)
+
+    body_r = 0.22 * s
+    inset = (0.16 if size <= 16 else 0.14) * s
+    screen = (inset, inset * 1.05, s - inset * 2.0, s - inset * 2.15, min(s - inset * 2.0, s - inset * 2.15) * 0.18)
 
     for iy in range(super_s):
         py = iy + 0.5
         for ix in range(super_s):
             px = ix + 0.5
             pix = buf[iy * super_s + ix]
-            blend(pix, *COL_RIM, cover(sd_round_rect(px, py, *body)))
-            blend(pix, *COL_BODY, cover(sd_round_rect(px, py, *inner)))
-            blend(pix, *COL_SCREEN, cover(sd_round_rect(px, py, *screen)))
-            blend(pix, *COL_LAMP, cover(math.hypot(px - lamp_cx, py - lamp_cy) - lamp_r))
+
+            d_body = sd_round_rect(px, py, 0, 0, s, s, body_r)
+            t = axis_t(px, py, 0, 0, s, s, DIR_V)
+            br, bg, bb = lerp((58, 58, 60), (36, 36, 38), t)
+            blend(pix, br, bg, bb, 255, cover(d_body))
+
+            # Hairline rim
+            rim = abs(d_body + 0.35) 
+            blend(pix, 96, 96, 100, 180, cover(rim - 0.55) * cover(d_body))
+
+            d_scr = sd_round_rect(px, py, *screen)
+            st = axis_t(px, py, *screen[:4], DIR_V)
+            sr, sg, sb = lerp((236, 236, 240), (196, 196, 204), st)
+            blend(pix, sr, sg, sb, 255, cover(d_scr))
+            if d_scr < 0.5 and py < screen[1] + screen[3] * 0.45:
+                wash = 1.0 - (py - screen[1]) / max(1.0, screen[3] * 0.45)
+                blend(pix, 255, 255, 255, 90 * wash, cover(d_scr))
 
     out = bytearray(size * size * 4)
     inv = 1.0 / (px_aa * px_aa)

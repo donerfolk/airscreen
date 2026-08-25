@@ -13,6 +13,9 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdarg>
+#include <avrt.h>
+
+#pragma comment(lib, "avrt.lib")
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -266,6 +269,15 @@ bool AudioPipeline::init_wasapi() {
         return false;
     }
 
+    IAudioClient2 *client2 = nullptr;
+    if (SUCCEEDED(client->QueryInterface(__uuidof(IAudioClient2), (void **) &client2)) && client2) {
+        AudioClientProperties props = {};
+        props.cbSize = sizeof(props);
+        props.eCategory = AudioCategory_Media;
+        client2->SetClientProperties(&props);
+        client2->Release();
+    }
+
     WAVEFORMATEX *mix = nullptr;
     hr = client->GetMixFormat(&mix);
     if (FAILED(hr) || !mix) {
@@ -320,9 +332,16 @@ bool AudioPipeline::init_wasapi() {
     CoTaskMemFree(mix);
 
     BYTE *pre = nullptr;
-    if (SUCCEEDED(render->GetBuffer(frames, &pre)) && pre) {
-        write_silence(pre, frames, out_ch_, out_bits_);
-        render->ReleaseBuffer(frames, 0);
+    UINT32 preroll = frames / 4;
+    if (preroll < 128) {
+        preroll = 128;
+    }
+    if (preroll > frames) {
+        preroll = frames;
+    }
+    if (SUCCEEDED(render->GetBuffer(preroll, &pre)) && pre) {
+        write_silence(pre, preroll, out_ch_, out_bits_);
+        render->ReleaseBuffer(preroll, 0);
     }
     hr = client->Start();
     if (FAILED(hr)) {
@@ -417,7 +436,7 @@ void AudioPipeline::push_pcm(const int16_t *pcm, int frames, int channels) {
     }
     size_t samples = (size_t) frames * (size_t) channels;
     size_t cap = ring_.size();
-    size_t max_keep = (size_t) out_rate_ * (size_t) out_ch_ * 80 / 1000;
+    size_t max_keep = (size_t) out_rate_ * (size_t) out_ch_ * 50 / 1000;
     if (max_keep < samples) {
         max_keep = samples;
     }
@@ -505,6 +524,12 @@ void AudioPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns) {
 }
 
 void AudioPipeline::render_thread() {
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+    DWORD mmcss_idx = 0;
+    HANDLE mmcss = AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcss_idx);
+    if (mmcss) {
+        AvSetMmThreadPriority(mmcss, AVRT_PRIORITY_HIGH);
+    }
     wasapi_ok_ = init_wasapi();
     if (ready_event_) {
         SetEvent((HANDLE) ready_event_);
@@ -566,6 +591,9 @@ void AudioPipeline::render_thread() {
             memcpy(dest, tmp.data(), need * sizeof(int16_t));
         }
         render->ReleaseBuffer(avail, 0);
+    }
+    if (mmcss) {
+        AvRevertMmThreadCharacteristics(mmcss);
     }
     teardown_wasapi();
 }

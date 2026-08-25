@@ -5,9 +5,15 @@
 #include "stream.h"
 #include "dnssd.h"
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+
 #include <cstring>
 #include <cstdlib>
 #include <cmath>
+#include <cstdio>
 #include <fstream>
 #include <mutex>
 
@@ -17,14 +23,20 @@ namespace {
 std::mutex g_log_mu;
 std::ofstream g_log;
 
-void file_log(const char *msg) {
+void file_log(const char *msg, bool flush) {
     std::lock_guard<std::mutex> lock(g_log_mu);
     if (!g_log.is_open()) {
         g_log.open(log_path(), std::ios::app);
     }
     if (g_log) {
-        g_log << msg << '\n';
-        g_log.flush();
+        SYSTEMTIME st = {};
+        GetLocalTime(&st);
+        char ts[32];
+        snprintf(ts, sizeof(ts), "%02u:%02u:%02u.%03u ", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+        g_log << ts << msg << '\n';
+        if (flush) {
+            g_log.flush();
+        }
     }
 }
 
@@ -154,6 +166,15 @@ bool Receiver::start(HWND hwnd, const Settings &settings, UiFn ui) {
         on_log(LOGGER_ERR, "D3D11 init failed");
         return false;
     }
+    video_.set_first_frame_fn([this] {
+        if (!connected_.load()) {
+            return;
+        }
+        SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED);
+        if (ui_) {
+            ui_(UiEvent::VideoReady, {});
+        }
+    });
     on_log(LOGGER_INFO, "starting mDNS");
     if (!start_dnssd()) {
         stop();
@@ -380,11 +401,7 @@ void Receiver::on_video(void *ntp, void *data) {
     if (!v || !v->data || v->data_len <= 0) {
         return;
     }
-    bool had = video_.has_frame();
     video_.submit(v->data, v->data_len, v->ntp_time_remote, v->is_h265);
-    if (!had && video_.has_frame() && ui_) {
-        ui_(UiEvent::VideoReady, {});
-    }
 }
 
 void Receiver::on_conn_init() {
@@ -401,9 +418,11 @@ void Receiver::on_conn_init() {
 void Receiver::teardown_session() {
     bool was = connected_.exchange(false);
     bool had_frame = video_.has_frame();
+    on_log(LOGGER_INFO, "session teardown");
     audio_.stop();
     video_.flush();
     video_.clear();
+    SetThreadExecutionState(ES_CONTINUOUS);
     {
         std::lock_guard<std::mutex> lock(pin_mu_);
         pin_.clear();
@@ -416,6 +435,9 @@ void Receiver::teardown_session() {
 
 void Receiver::on_conn_destroy() {
     int n = --open_conns_;
+    char buf[48];
+    snprintf(buf, sizeof(buf), "conn_destroy open=%d", n);
+    on_log(LOGGER_INFO, buf);
     if (n > 0) {
         return;
     }
@@ -493,8 +515,8 @@ void Receiver::on_log(int level, const char *msg) {
     if (!msg) {
         return;
     }
-    file_log(msg);
-    if (ui_ && level <= LOGGER_INFO) {
+    file_log(msg, level <= LOGGER_ERR);
+    if (ui_ && level <= LOGGER_WARNING) {
         ui_(UiEvent::Log, msg);
     }
 }

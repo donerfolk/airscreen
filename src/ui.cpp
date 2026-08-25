@@ -43,13 +43,16 @@ using Gdiplus::UnitPixel;
 namespace airscreen {
 namespace {
 
-Color c_field(255, 29, 29, 31);
-Color c_plate(255, 44, 44, 46);
-Color c_plate_hi(255, 58, 58, 60);
-Color c_text(255, 245, 245, 247);
-Color c_muted(255, 161, 161, 166);
-Color c_line(255, 72, 72, 74);
-Color c_blue(255, 10, 132, 255);
+Color c_field(255, 10, 10, 12);      // #0a0a0c — near-black so the plate floats
+Color c_plate(255, 44, 44, 46);      // #2c2c2e
+Color c_plate_hi(255, 58, 58, 60);   // #3a3a3c
+Color c_capsule(255, 28, 28, 30);     // #1c1c1e — recessed into the plate
+Color c_rim(255, 142, 142, 147);      // #8e8e93 — readable glass lip
+Color c_line(255, 72, 72, 74);        // #48484a
+Color c_text(255, 245, 245, 247);     // #f5f5f7
+Color c_muted(255, 134, 134, 139);    // #86868b — quieter secondary
+Color c_on_ink(255, 255, 255, 255);
+Color c_blue(255, 10, 132, 255);      // #0a84ff
 Color c_live(255, 48, 209, 88);
 Color c_wait(255, 142, 142, 147);
 Color c_pair(255, 255, 159, 10);
@@ -146,23 +149,46 @@ void draw_round(Graphics &g, const RectF &r, float rad, const Color &c, float w)
 }
 
 void draw_shadow(Graphics &g, RectF r, float rad) {
-    for (int i = 8; i >= 1; --i) {
+    // Visible Continuity float: stacked umbra, readable on near-black field.
+    for (int i = 14; i >= 1; --i) {
         RectF s = r;
-        s.Y += (float) i * 1.1f;
-        s.X -= (float) i * 0.15f;
-        s.Width += (float) i * 0.3f;
-        s.Height += (float) i * 0.45f;
-        fill_round(g, s, rad + (float) i * 0.4f, Color((BYTE) (6 + i), 0, 0, 0));
+        float t = (float) i;
+        s.Y += t * 1.6f;
+        s.X -= t * 0.35f;
+        s.Width += t * 0.7f;
+        s.Height += t * 0.95f;
+        BYTE a = (BYTE) (std::min)(52, 8 + i * 3); // ~11..50
+        fill_round(g, s, rad + t * 0.7f, Color(a, 0, 0, 0));
     }
 }
 
+void fill_round_grad(Graphics &g, const RectF &r, float rad, const Color &a, const Color &b, float angle) {
+    GraphicsPath p;
+    add_round_rect(p, r, rad);
+    LinearGradientBrush br(r, a, b, angle);
+    g.FillPath(&br, &p);
+}
+
 void draw_mark(Graphics &g, RectF box) {
-    float m = box.Width / 32.f;
-    RectF body(box.X + 3 * m, box.Y + 5 * m, 26 * m, 22 * m);
-    fill_round(g, body, 5 * m, Color(255, 44, 44, 46));
-    draw_round(g, body, 5 * m, Color(255, 90, 90, 94), (std::max)(1.f, 0.7f * m));
-    RectF glass(box.X + 6 * m, box.Y + 8 * m, 20 * m, 13 * m);
-    fill_round(g, glass, 2.4f * m, Color(255, 245, 245, 247));
+    // Continuity glass: plate-color body, pale frosted screen, hairline rim.
+    float s = box.Width;
+    float body_r = s * 0.22f;
+    fill_round_grad(g, box, body_r, Color(255, 58, 58, 60), Color(255, 36, 36, 38), 90.f);
+    draw_round(g, box, body_r, Color(180, 96, 96, 100), (std::max)(1.f, s * 0.04f));
+
+    float inset = s <= 18.f ? s * 0.16f : s * 0.14f;
+    RectF screen(box.X + inset, box.Y + inset * 1.05f, s - inset * 2.f, s - inset * 2.15f);
+    float scr_r = (std::min)(screen.Width, screen.Height) * 0.18f;
+    fill_round_grad(g, screen, scr_r, Color(255, 236, 236, 240), Color(255, 196, 196, 204), 72.f);
+    // Top glass catch
+    GraphicsPath scr;
+    add_round_rect(scr, screen, scr_r);
+    g.SetClip(&scr);
+    LinearGradientBrush wash(RectF(screen.X, screen.Y, screen.Width, screen.Height * 0.45f),
+                             Color(90, 255, 255, 255), Color(0, 255, 255, 255),
+                             Gdiplus::LinearGradientModeVertical);
+    g.FillRectangle(&wash, RectF(screen.X, screen.Y, screen.Width, screen.Height * 0.45f));
+    g.ResetClip();
 }
 
 void icon_pencil(Graphics &g, RectF b, const Color &c, float w) {
@@ -324,22 +350,25 @@ void ShellUi::paint(HWND hwnd, HDC hdc, RECT client, const UiView &view, int hov
 
     float rad = (float) dip(28, dpi_);
     draw_shadow(g, plate, rad);
-    fill_round(g, plate, rad, c_plate);
+    // Plate body: slight vertical lift so frost has a base tone to sit on.
+    fill_round_grad(g, plate, rad, Color(255, 52, 52, 54), Color(255, 38, 38, 40), 90.f);
 
     GraphicsPath clip;
     add_round_rect(clip, plate, rad);
     g.SetClip(&clip);
-    LinearGradientBrush sheen(plate, Color(56, 255, 255, 255), Color(0, 255, 255, 255),
+    // Frost: full-height fade so glass reads without a hard top band.
+    LinearGradientBrush sheen(plate, Color(95, 255, 255, 255), Color(0, 255, 255, 255),
                               Gdiplus::LinearGradientModeVertical);
-    RectF sheen_rc = plate;
-    sheen_rc.Height = plate.Height * 0.58f;
-    g.FillRectangle(&sheen, sheen_rc);
-    LinearGradientBrush edge(RectF(plate.X, plate.Y, plate.Width, (float) dip(18, dpi_)),
-                             Color(70, 255, 255, 255), Color(0, 255, 255, 255),
-                             Gdiplus::LinearGradientModeVertical);
-    g.FillRectangle(&edge, RectF(plate.X, plate.Y, plate.Width, (float) dip(18, dpi_)));
+    g.FillRectangle(&sheen, plate);
+    float edge_h = (float) dip(28, dpi_);
+    LinearGradientBrush edge(RectF(plate.X, plate.Y, plate.Width, edge_h), Color(140, 255, 255, 255),
+                             Color(0, 255, 255, 255), Gdiplus::LinearGradientModeVertical);
+    g.FillRectangle(&edge, RectF(plate.X, plate.Y, plate.Width, edge_h));
+    Pen lip(Color(80, 255, 255, 255), 1.25f);
+    g.DrawLine(&lip, plate.X + rad * 0.45f, plate.Y + 1.25f, plate.X + plate.Width - rad * 0.45f,
+               plate.Y + 1.25f);
     g.ResetClip();
-    draw_round(g, plate, rad, Color(255, 96, 96, 100), 1.15f);
+    draw_round(g, plate, rad, c_rim, 1.35f);
 
     float pad = (float) dip(36, dpi_);
     float inner_l = plate.X + pad;
@@ -382,13 +411,14 @@ void ShellUi::paint(HWND hwnd, HDC hdc, RECT client, const UiView &view, int hov
     float pill_h = (float) dip(28, dpi_);
     float pill_w = (float) dip(108, dpi_);
     RectF pill(inner_r - pill_w, inner_t + (mark_rc.Height - pill_h) * 0.5f, pill_w, pill_h);
-    fill_round(g, pill, pill_h * 0.5f, Color(255, 58, 58, 60));
+    fill_round(g, pill, pill_h * 0.5f, Color(255, 36, 36, 38));
+    draw_round(g, pill, pill_h * 0.5f, Color(160, 72, 72, 74), 1.f);
     float dot = (float) dip(7, dpi_);
     float dx = pill.X + (float) dip(12, dpi_);
     float dy = pill.Y + (pill.Height - dot) * 0.5f;
-    BYTE a = (BYTE) (140 + 115 * pulse);
-    SolidBrush glow(Color((BYTE) (30 + 40 * pulse), pill_dot.GetR(), pill_dot.GetG(), pill_dot.GetB()));
-    g.FillEllipse(&glow, dx - 3, dy - 3, dot + 6, dot + 6);
+    BYTE a = (BYTE) (160 + 95 * pulse);
+    SolidBrush glow(Color((BYTE) (40 + 50 * pulse), pill_dot.GetR(), pill_dot.GetG(), pill_dot.GetB()));
+    g.FillEllipse(&glow, dx - 3.5f, dy - 3.5f, dot + 7.f, dot + 7.f);
     SolidBrush dot_b(Color(a, pill_dot.GetR(), pill_dot.GetG(), pill_dot.GetB()));
     g.FillEllipse(&dot_b, dx, dy, dot, dot);
     Font pill_f(ui_text(), (float) dip(12, dpi_), FontStyleRegular, UnitPixel);
@@ -401,39 +431,39 @@ void ShellUi::paint(HWND hwnd, HDC hdc, RECT client, const UiView &view, int hov
     float cap_y = inner_b - cap_h;
 
     if (!view.pin.empty()) {
-        Font pin_f(ui_display(), (float) (std::max)(dip(56, dpi_), (int) (inner_w / 6.2f)), FontStyleRegular, UnitPixel);
-        RectF pin_rc(inner_l, plate.Y + plate.Height * 0.28f, inner_w, (float) dip(90, dpi_));
+        Font pin_f(ui_display(), (float) (std::max)(dip(64, dpi_), (int) (inner_w / 5.6f)), FontStyleRegular, UnitPixel);
+        RectF pin_rc(inner_l, plate.Y + plate.Height * 0.24f, inner_w, (float) dip(100, dpi_));
         g.DrawString(view.pin.c_str(), -1, &pin_f, pin_rc, &center, &text_b);
         Font hint(ui_text(), (float) dip(17, dpi_), FontStyleRegular, UnitPixel);
-        RectF hint_rc(inner_l, pin_rc.GetBottom() + (float) dip(8, dpi_), inner_w, (float) dip(28, dpi_));
+        RectF hint_rc(inner_l, pin_rc.GetBottom() + (float) dip(14, dpi_), inner_w, (float) dip(28, dpi_));
         g.DrawString(L"Enter this PIN on your iPhone", -1, &hint, hint_rc, &center, &muted_b);
         name_rc_ = {};
         edit_rc_ = {(LONG) pin_rc.X, (LONG) pin_rc.Y, (LONG) pin_rc.GetRight(), (LONG) hint_rc.GetBottom()};
     } else {
-        float name_px = (float) (std::clamp)((int) (inner_w / 8.2f), dip(36, dpi_), dip(72, dpi_));
+        float name_px = (float) (std::clamp)((int) (inner_w / 7.0f), dip(40, dpi_), dip(84, dpi_));
         FontStyle name_style = FontStyleRegular;
         const wchar_t *name_face = ui_display_medium();
         if (wcsstr(name_face, L"Medium") == nullptr && wcsstr(name_face, L"Semibold") == nullptr) {
             name_style = FontStyleBold;
         }
         Font name_f(name_face, name_px, name_style, UnitPixel);
-        float name_h = name_px * 1.35f;
-        float name_y = plate.Y + (plate.Height - name_h) * 0.42f;
+        float name_h = name_px * 1.28f;
+        float name_y = plate.Y + (plate.Height - name_h) * 0.38f;
         RectF name_area(inner_l, name_y, inner_w, name_h);
-        Color name_c = (hover == (int) UiHit::Name) ? Color(255, 255, 255, 255) : c_text;
+        Color name_c = (hover == (int) UiHit::Name) ? c_on_ink : c_text;
         SolidBrush name_b(name_c);
-        draw_tracked_center(g, view.name, name_f, name_area, name_b, 0.92f);
+        draw_tracked_center(g, view.name, name_f, name_area, name_b, 0.90f);
         name_rc_ = {(LONG) name_area.X, (LONG) name_area.Y, (LONG) name_area.GetRight(),
                     (LONG) name_area.GetBottom()};
         edit_rc_ = name_rc_;
 
         Font sub(ui_text(), (float) dip(17, dpi_), FontStyleRegular, UnitPixel);
-        RectF sub_rc(inner_l, name_area.GetBottom() + (float) dip(4, dpi_), inner_w, (float) dip(26, dpi_));
+        RectF sub_rc(inner_l, name_area.GetBottom() + (float) dip(12, dpi_), inner_w, (float) dip(26, dpi_));
         g.DrawString(view.status.c_str(), -1, &sub, sub_rc, &center, &muted_b);
 
         std::wstring how = L"On iPhone: Control Center  →  Screen Mirroring  →  " + view.name;
         Font step(ui_text(), (float) dip(13, dpi_), FontStyleRegular, UnitPixel);
-        RectF step_rc(inner_l, sub_rc.GetBottom() + (float) dip(6, dpi_), inner_w, (float) dip(22, dpi_));
+        RectF step_rc(inner_l, sub_rc.GetBottom() + (float) dip(10, dpi_), inner_w, (float) dip(22, dpi_));
         if (show_capsules && step_rc.GetBottom() > cap_y - dip(8, dpi_)) {
             step_rc.Y = cap_y - (float) dip(30, dpi_);
         }
@@ -449,7 +479,7 @@ void ShellUi::paint(HWND hwnd, HDC hdc, RECT client, const UiView &view, int hov
         }
         Font btn_f(ui_text(), (float) dip(12, dpi_), FontStyleRegular, UnitPixel);
         float icon_s = (float) dip(14, dpi_);
-        float sw = (std::max)(1.2f, (float) dip(1, dpi_) + 0.4f);
+        float sw = (std::max)(1.15f, (float) dip(1, dpi_) + 0.25f);
         for (int i = 0; i < 4; ++i) {
             RectF br(inner_l + (float) i * (bw + cap_gap), cap_y, bw, cap_h);
             if (br.GetRight() > inner_r + 2) {
@@ -458,15 +488,23 @@ void ShellUi::paint(HWND hwnd, HDC hdc, RECT client, const UiView &view, int hov
             btn_rc_[i] = {(LONG) br.X, (LONG) br.Y, (LONG) br.GetRight(), (LONG) br.GetBottom()};
             bool hot = hover == (int) UiHit::Rename + i;
             float cr = cap_h * 0.5f;
-            Color ink = on[i] ? Color(255, 255, 255, 255) : (hot ? c_text : c_muted);
+            Color ink = on[i] ? c_on_ink : (hot ? c_text : c_muted);
             if (on[i]) {
                 fill_round(g, br, cr, c_blue);
+                GraphicsPath on_clip;
+                add_round_rect(on_clip, br, cr);
+                g.SetClip(&on_clip);
+                LinearGradientBrush on_sheen(br, Color(55, 255, 255, 255), Color(0, 255, 255, 255),
+                                             Gdiplus::LinearGradientModeVertical);
+                g.FillRectangle(&on_sheen, RectF(br.X, br.Y, br.Width, br.Height * 0.45f));
+                g.ResetClip();
             } else {
-                Color fill = hot ? Color(255, 58, 58, 60) : Color(255, 48, 48, 50);
+                Color fill = hot ? c_plate_hi : c_capsule;
                 fill_round(g, br, cr, fill);
-                draw_round(g, br, cr, c_line, 1.f);
+                draw_round(g, br, cr, hot ? c_rim : Color(255, 90, 90, 94), 1.15f);
             }
-            RectF icon(br.X + (float) dip(12, dpi_), br.Y + (cap_h - icon_s) * 0.5f, icon_s, icon_s);
+            // Optical: stroke icons sit a hair high in stadiums.
+            RectF icon(br.X + (float) dip(12, dpi_), br.Y + (cap_h - icon_s) * 0.5f - 0.5f, icon_s, icon_s);
             if (i == 0) {
                 icon_pencil(g, icon, ink, sw);
             } else if (i == 1) {

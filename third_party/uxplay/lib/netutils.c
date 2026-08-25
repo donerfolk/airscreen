@@ -204,6 +204,30 @@ netutils_init_socket(unsigned short *port, int use_ipv6, int use_udp)
     return -1;
 }
 
+void
+netutils_tune_tcp(int fd)
+{
+    int nodelay = 1;
+    int rcv = 2 * 1024 * 1024;
+    int snd = 256 * 1024;
+    if (fd < 0) {
+        return;
+    }
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char *) &nodelay, sizeof(nodelay));
+    setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const char *) &rcv, sizeof(rcv));
+    setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const char *) &snd, sizeof(snd));
+}
+
+void
+netutils_tune_udp_rcvbuf(int fd)
+{
+    int rcv = 512 * 1024;
+    if (fd < 0) {
+        return;
+    }
+    setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const char *) &rcv, sizeof(rcv));
+}
+
 // Src is the ip address
 int
 netutils_parse_address(int family, const char *src, void *dst, int dstlen)

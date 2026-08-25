@@ -14,6 +14,7 @@
 #include <commctrl.h>
 #include <dwmapi.h>
 #include <dbghelp.h>
+#include <timeapi.h>
 #include <string>
 #include <cmath>
 
@@ -399,18 +400,32 @@ void paint_gear(HWND hwnd, HDC hdc, bool hot) {
     HDC mem = CreateCompatibleDC(hdc);
     HBITMAP bmp = CreateCompatibleBitmap(hdc, w, h);
     HGDIOBJ old_bmp = SelectObject(mem, bmp);
+
+    // Continuity plate body at rest; plate-hi on hover.
     COLORREF fill = hot ? RGB(58, 58, 60) : RGB(44, 44, 46);
     HBRUSH b = CreateSolidBrush(fill);
     FillRect(mem, &rc, b);
     DeleteObject(b);
 
+    // Hairline rim — glass edge, brighter on hover.
+    HPEN rim = CreatePen(PS_SOLID, 1, hot ? RGB(120, 120, 124) : RGB(96, 96, 100));
+    HGDIOBJ old_pen = SelectObject(mem, rim);
+    HGDIOBJ old_br = SelectObject(mem, GetStockObject(NULL_BRUSH));
+    Ellipse(mem, 0, 0, w - 1, h - 1);
+    SelectObject(mem, old_br);
+    SelectObject(mem, old_pen);
+    DeleteObject(rim);
+
     SetBkMode(mem, TRANSPARENT);
     SetTextColor(mem, RGB(245, 245, 247));
-    int px = MulDiv(18, window_dpi(hwnd), 96);
+    // Optical: MDL2 gear sits heavy; size a hair under the circle for balance.
+    int px = MulDiv(17, window_dpi(hwnd), 96);
     HFONT font = CreateFontW(px, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                              CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe MDL2 Assets");
     HGDIOBJ old_font = SelectObject(mem, font);
-    DrawTextW(mem, L"\uE713", -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    RECT text_rc = rc;
+    text_rc.top -= 1; // optical vertical center
+    DrawTextW(mem, L"\uE713", -1, &text_rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
     SelectObject(mem, old_font);
     DeleteObject(font);
     BitBlt(hdc, 0, 0, w, h, mem, 0, 0, SRCCOPY);
@@ -832,6 +847,17 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     Shell_NotifyIconW(NIM_SETVERSION, &app.nid);
     SetTimer(app.hwnd, kTimerPulse, 40, nullptr);
 
+    timeBeginPeriod(1);
+    SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
+#ifdef PROCESS_POWER_THROTTLING_CURRENT_VERSION
+    PROCESS_POWER_THROTTLING_STATE pt = {};
+    pt.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
+    pt.ControlMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED;
+    pt.StateMask = 0;
+    SetProcessInformation(GetCurrentProcess(), ProcessPowerThrottling, &pt, sizeof(pt));
+#endif
+
     MSG pump;
     while (PeekMessageW(&pump, nullptr, 0, 0, PM_REMOVE)) {
         TranslateMessage(&pump);
@@ -862,6 +888,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     }
     CoUninitialize();
     airscreen::gdiplus_shutdown(gdip);
+    timeEndPeriod(1);
     if (instance) {
         CloseHandle(instance);
     }

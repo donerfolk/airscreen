@@ -251,16 +251,28 @@ raop_rtp_mirror_thread(void *arg)
                 break;
             }
 
-            // We're calling recv for a certain amount of data, so we need a timeout
-            struct timeval tv;
-            tv.tv_sec = 0;
-            tv.tv_usec = 5000;
-            if (setsockopt(stream_fd, SOL_SOCKET, SO_RCVTIMEO, CAST &tv, sizeof(tv)) < 0) {
+            // Windows SO_RCVTIMEO is a DWORD in milliseconds, not struct timeval.
+#ifdef _WIN32
+            {
+                DWORD rcv_ms = 5;
+                if (setsockopt(stream_fd, SOL_SOCKET, SO_RCVTIMEO, CAST &rcv_ms, sizeof(rcv_ms)) < 0) {
+                    int sock_err = SOCKET_GET_ERROR();
+                    logger_log(raop_rtp_mirror->logger, LOGGER_ERR,
+                               "raop_rtp_mirror could not set stream socket timeout %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
+                    break;
+                }
+            }
+#else
+            struct timeval rcv_tv;
+            rcv_tv.tv_sec = 0;
+            rcv_tv.tv_usec = 5000;
+            if (setsockopt(stream_fd, SOL_SOCKET, SO_RCVTIMEO, CAST &rcv_tv, sizeof(rcv_tv)) < 0) {
                 int sock_err = SOCKET_GET_ERROR();
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR,
                            "raop_rtp_mirror could not set stream socket timeout %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
                 break;
             }
+#endif
 
             int option = 1;
             if (setsockopt(stream_fd, SOL_SOCKET, SO_KEEPALIVE, CAST &option, sizeof(option)) < 0) {
@@ -268,13 +280,28 @@ raop_rtp_mirror_thread(void *arg)
                 logger_log(raop_rtp_mirror->logger, LOGGER_WARNING,
                            "raop_rtp_mirror could not set stream socket keepalive %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
             }
+            netutils_tune_tcp(stream_fd);
+#ifdef _WIN32
+            /* TCP_KEEPALIVE on Windows is milliseconds; the Unix values (60/10/6) would probe after 60ms and RST the stream. */
+            {
+                struct tcp_keepalive ka;
+                DWORD bytes = 0;
+                ka.onoff = 1;
+                ka.keepalivetime = 60000;
+                ka.keepaliveinterval = 10000;
+                if (WSAIoctl(stream_fd, SIO_KEEPALIVE_VALS, &ka, sizeof(ka), NULL, 0, &bytes, NULL, NULL) == SOCKET_ERROR) {
+                    int sock_err = SOCKET_GET_ERROR();
+                    logger_log(raop_rtp_mirror->logger, LOGGER_WARNING,
+                               "raop_rtp_mirror could not set keepalive vals %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
+                }
+            }
+#else
             option = 60;
             if (setsockopt(stream_fd, SOL_TCP, TCP_KEEPIDLE, CAST &option, sizeof(option)) < 0) {
                 int sock_err = SOCKET_GET_ERROR();
                 logger_log(raop_rtp_mirror->logger, LOGGER_WARNING,
                            "raop_rtp_mirror could not set stream socket keepalive time %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
             }
-/* OpenBSD does not have these options.  */
 #ifndef __OpenBSD__
             option = 10;
             if (setsockopt(stream_fd, SOL_TCP, TCP_KEEPINTVL, CAST &option, sizeof(option)) < 0) {
@@ -289,6 +316,7 @@ raop_rtp_mirror_thread(void *arg)
                            "raop_rtp_mirror could not set stream socket keepalive probes %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
             }
 #endif /* !__OpenBSD__ */
+#endif /* _WIN32 */
             readstart = 0;
         }
 
@@ -303,17 +331,17 @@ raop_rtp_mirror_thread(void *arg)
             }
 
             if (payload == NULL && ret == 0) {
-                logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG,
+                logger_log(raop_rtp_mirror->logger, LOGGER_INFO,
                            "raop_rtp_mirror tcp socket was closed by client (recv returned 0); got %d bytes of 128 byte header",readstart);
                 FD_CLR(stream_fd, &rfds);
                 stream_fd = -1;
                 continue;
             } else if (payload == NULL && ret == -1) {
                 int sock_err = SOCKET_GET_ERROR();
-                if (sock_err == SOCKET_ERRORNAME(EAGAIN) || sock_err == SOCKET_ERRORNAME(EWOULDBLOCK)) continue; // Timeouts can happen even if the connection is fine
+                if (SOCKET_AGAIN(sock_err)) continue; // Timeouts can happen even if the connection is fine
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR,
                            "raop_rtp_mirror error  in header recv: %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
-                if (sock_err == SOCKET_ERRORNAME(ECONNRESET)) conn_reset = true;; 
+                if (sock_err == SOCKET_ERRORNAME(ECONNRESET)) conn_reset = true;
                 break;
             }
 
@@ -379,9 +407,9 @@ raop_rtp_mirror_thread(void *arg)
                 break;
             } else if (ret == -1) {
                 int sock_err = SOCKET_GET_ERROR();
-                if (sock_err == SOCKET_ERRORNAME(EAGAIN) || sock_err == SOCKET_ERRORNAME(EWOULDBLOCK)) continue; // Timeouts can happen even if the connection is fine
+                if (SOCKET_AGAIN(sock_err)) continue; // Timeouts can happen even if the connection is fine
                 logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in recv: %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
-                if (errno == SOCKET_ERRORNAME(ECONNRESET)) conn_reset = true;
+                if (sock_err == SOCKET_ERRORNAME(ECONNRESET)) conn_reset = true;
                 break;
             }
 

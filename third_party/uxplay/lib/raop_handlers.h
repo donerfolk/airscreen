@@ -1269,9 +1269,11 @@ raop_handler_teardown(raop_conn_t *conn,
         }
     }
     plist_free(req_root_node);
-    logger_log(raop->logger, LOGGER_DEBUG, "TEARDOWN request,  96=%d, 110=%d", teardown_96, teardown_110);
+    logger_log(raop->logger, LOGGER_INFO, "TEARDOWN request,  96=%d, 110=%d", teardown_96, teardown_110);
   
-    http_response_add_header(response, "Connection", "close");
+    if (!teardown_96 && !teardown_110) {
+        http_response_add_header(response, "Connection", "close");
+    }
   
     if (teardown_96) {
         if (conn->raop_rtp) {
