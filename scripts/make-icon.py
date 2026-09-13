@@ -1,4 +1,4 @@
-"""Generate AirScreen app.ico — Continuity glass: plate body + pale frosted screen."""
+"""Generate AirScreen app.ico — a monitor on a stand casting Continuity-blue AirPlay arcs."""
 from __future__ import annotations
 
 import math
@@ -9,8 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "src" / "app"
 
-DEG90 = math.radians(90)
-DIR_V = (math.sin(DEG90), -math.cos(DEG90))
+BLUE = (10, 132, 255)  # Continuity blue
 
 
 def sd_round_rect(px: float, py: float, x: float, y: float, w: float, h: float, r: float) -> float:
@@ -44,25 +43,19 @@ def lerp(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[fl
     return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
 
 
-def axis_t(px: float, py: float, x: float, y: float, w: float, h: float, direction: tuple[float, float]) -> float:
-    dx, dy = direction
-    corners = ((x, y), (x + w, y), (x, y + h), (x + w, y + h))
-    projs = [cx * dx + cy * dy for cx, cy in corners]
-    lo, hi = min(projs), max(projs)
-    if hi <= lo:
-        return 0.0
-    return (px * dx + py * dy - lo) / (hi - lo)
-
-
 def render(size: int) -> bytes:
+    """Draw in the design's 256-unit space, scaled to the supersampled buffer."""
     px_aa = 4 if size <= 48 else 2
     super_s = size * px_aa
     buf = [[0.0, 0.0, 0.0, 0.0] for _ in range(super_s * super_s)]
-    s = float(super_s)
+    k = super_s / 256.0  # design-units -> supersampled pixels
 
-    body_r = 0.22 * s
-    inset = (0.16 if size <= 16 else 0.14) * s
-    screen = (inset, inset * 1.05, s - inset * 2.0, s - inset * 2.15, min(s - inset * 2.0, s - inset * 2.15) * 0.18)
+    body = (6 * k, 28 * k, 244 * k, 172 * k, 22 * k)
+    screen = (14 * k, 36 * k, 228 * k, 156 * k, 14 * k)
+    neck = (118 * k, 200 * k, 20 * k, 14 * k, 2 * k)
+    base = (102 * k, 216 * k, 52 * k, 5 * k, 2.5 * k)
+    cx, cy = 128 * k, 134 * k
+    rings = ((25 * k, 1.75 * k, 0.60), (47 * k, 1.5 * k, 0.35), (67 * k, 1.5 * k, 0.18))
 
     for iy in range(super_s):
         py = iy + 0.5
@@ -70,22 +63,36 @@ def render(size: int) -> bytes:
             px = ix + 0.5
             pix = buf[iy * super_s + ix]
 
-            d_body = sd_round_rect(px, py, 0, 0, s, s, body_r)
-            t = axis_t(px, py, 0, 0, s, s, DIR_V)
-            br, bg, bb = lerp((58, 58, 60), (36, 36, 38), t)
+            # Body plate + hairline rim + top sheen.
+            d_body = sd_round_rect(px, py, *body)
+            br, bg, bb = lerp((64, 64, 68), (40, 40, 42), (py - body[1]) / body[3])
             blend(pix, br, bg, bb, 255, cover(d_body))
+            blend(pix, 106, 106, 112, 255, cover(abs(d_body) - 0.625 * k))
+            sheen = 1.0 - (py - body[1]) / (56 * k)
+            if sheen > 0:
+                blend(pix, 255, 255, 255, 0.08 * 255 * sheen, cover(d_body))
 
-            # Hairline rim
-            rim = abs(d_body + 0.35) 
-            blend(pix, 96, 96, 100, 180, cover(rim - 0.55) * cover(d_body))
-
+            # Dark screen.
             d_scr = sd_round_rect(px, py, *screen)
-            st = axis_t(px, py, *screen[:4], DIR_V)
-            sr, sg, sb = lerp((236, 236, 240), (196, 196, 204), st)
+            sr, sg, sb = lerp((28, 28, 30), (14, 14, 16), (py - screen[1]) / screen[3])
             blend(pix, sr, sg, sb, 255, cover(d_scr))
-            if d_scr < 0.5 and py < screen[1] + screen[3] * 0.45:
-                wash = 1.0 - (py - screen[1]) / max(1.0, screen[3] * 0.45)
-                blend(pix, 255, 255, 255, 90 * wash, cover(d_scr))
+            on_screen = cover(d_scr)
+
+            # Soft glow behind the arcs.
+            e = math.hypot((px - cx) / (48 * k), (py - 120 * k) / (32 * k))
+            if e < 1.0:
+                blend(pix, *BLUE, 0.06 * 255 * (1 - e), on_screen)
+
+            # Concentric signal arcs (top caps, like AirPlay waves).
+            dist = math.hypot(px - cx, py - cy)
+            for rr, hw, op in rings:
+                clip = cover(py - (cy - 0.4 * rr))  # keep the upper cap only
+                blend(pix, *BLUE, op * 255, cover(abs(dist - rr) - hw) * on_screen * clip)
+            blend(pix, *BLUE, 0.9 * 255, cover(dist - 6 * k) * on_screen)
+
+            # Stand neck + base.
+            blend(pix, 58, 58, 60, 255, cover(sd_round_rect(px, py, *neck)))
+            blend(pix, 72, 72, 74, 255, cover(sd_round_rect(px, py, *base)))
 
     out = bytearray(size * size * 4)
     inv = 1.0 / (px_aa * px_aa)
