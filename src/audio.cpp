@@ -80,7 +80,7 @@ void write_silence(BYTE *dest, UINT32 frames, int channels, int bits) {
     memset(dest, 0, (size_t) frames * (size_t) channels * (size_t) bytes_ps);
 }
 
-// ponytail: fixed jitter depth, make adaptive if Wi-Fi jitter varies a lot between setups
+// Fixed jitter buffer depth. Could be made adaptive if Wi-Fi jitter varies a lot between setups.
 const int kTargetMs = 80; // cushion to build before (re)starting playback
 const int kMaxMs = 250;   // past this, skip back to kTargetMs
 

@@ -21,7 +21,7 @@ __pycache__/
 !third_party/uxplay/**
 !third_party/libplist/**
 
-# Design session artifacts (keep DESIGN.md and .impeccable/design.json)
-.impeccable/review/
-.impeccable/questions/
-.impeccable/mocks/
+# Local design notes
+/.impeccable/
+/DESIGN.md
+/PRODUCT.md

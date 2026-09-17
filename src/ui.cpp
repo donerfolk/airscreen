@@ -1,15 +1,5 @@
-/* THESIS: No plate, no card. The window is an ambient color field the iPhone's picture will replace, with the
- * receiver name set huge on it; it refuses the card-in-a-window settings panel.
- * OWN-WORLD: Muted dusk-toned state fields (blue waiting, amber pairing, green live, graphite failed) lit by two
- * slow blooms; white Segoe UI Semibold lockup lifted by soft tinted shadows; flat tiles that flood white when on;
- * a dark mode that drops every field toward midnight.
- * STORY: This PC is ready, this is the name iPhone lists, this is the route to it. A PIN turns the field amber,
- * freezes it, and takes the lockup.
- * FIRST VIEWPORT: Open field with the state sentence top-left. Bottom-left lockup: receiver name at ~11% of width,
- * route beneath. Rename plus three toggles along the floor.
- * FORM: Ambient Field, grounded candidate 3 of 7; seed aba659fb.
- * FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and
- * DESIGN.md */
+/* Idle window: a full-window color field that shows receiver state (waiting, pairing, connected, failed),
+ * the receiver name, and the toolbar. Mirrored video replaces it once the first frame arrives. */
 
 #include <windows.h>
 #include <objidl.h>
