@@ -58,6 +58,9 @@ private:
     size_t rpos_ = 0;
     size_t wpos_ = 0;
     size_t count_ = 0;
+    bool buffering_ = true; // refilling cushion before playing; guarded by mu_
+    unsigned rebuffers_ = 0;
+    size_t dropped_ = 0;
     std::atomic<float> volume_{1.0f};
     std::atomic<bool> running_{false};
     unsigned char codec_type_ = 0;

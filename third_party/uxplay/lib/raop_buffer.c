@@ -34,6 +34,7 @@
 #include "byteutils.h"
 
 #define RAOP_BUFFER_LENGTH 256
+#define RAOP_RESEND_WAIT 6 /* packets (~65 ms AAC-ELD), keep below the receiver's audio cushion */
 
 typedef struct {
     /* Data available */
@@ -241,12 +242,19 @@ raop_buffer_dequeue(raop_buffer_t *raop_buffer, unsigned int *length, uint32_t *
     if (no_resend) {
         /* If we do no resends, always return the first entry */
     } else if (!entry->filled) {
-        /* Check how much we have space left in the buffer */
-        if (entry_count < RAOP_BUFFER_LENGTH) {
+        /* Wait only briefly: waiting for the whole buffer stalled live audio for ~3 s */
+        if (entry_count < RAOP_RESEND_WAIT) {
             /* Return nothing and hope resend gets on time */
             return NULL;
         }
-        /* Risk of buffer overrun, return empty buffer */
+        /* Resend is too late, skip the whole run of lost packets */
+        unsigned short skipped = 0;
+        while (!entry->filled && seqnum_cmp(raop_buffer->first_seqnum, raop_buffer->last_seqnum) < 0) {
+            raop_buffer->first_seqnum += 1;
+            entry = &raop_buffer->entries[raop_buffer->first_seqnum % RAOP_BUFFER_LENGTH];
+            skipped++;
+        }
+        logger_log(raop_buffer->logger, LOGGER_INFO, "raop_buffer skipped %u lost audio packets", skipped);
     }
 
     /* Update buffer and validate entry */
