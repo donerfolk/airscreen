@@ -50,16 +50,24 @@ const char *kPs = R"(
 Texture2D texY : register(t0);
 Texture2D texUV : register(t1);
 SamplerState samp : register(s0);
+cbuffer ColorCB : register(b1) { float full_range; float3 pad; };
 float4 main(float4 pos : SV_POSITION, float2 uv : TEXCOORD) : SV_TARGET {
     float y = texY.Sample(samp, uv).r;
     float2 chroma = texUV.Sample(samp, uv).rg;
-    float c = y - 0.0627451;
     float d = chroma.r - 0.5;
     float e = chroma.g - 0.5;
-    float r = saturate(1.164383 * c + 1.792741 * e);
-    float g = saturate(1.164383 * c - 0.213249 * d - 0.532909 * e);
-    float b = saturate(1.164383 * c + 2.112402 * d);
-    return float4(r, g, b, 1);
+    float r, g, b;
+    if (full_range > 0.5) {
+        r = y + 1.5748 * e;
+        g = y - 0.1873 * d - 0.4681 * e;
+        b = y + 1.8556 * d;
+    } else {
+        float c = y - 0.0627451;
+        r = 1.164383 * c + 1.792741 * e;
+        g = 1.164383 * c - 0.213249 * d - 0.532909 * e;
+        b = 1.164383 * c + 2.112402 * d;
+    }
+    return float4(saturate(r), saturate(g), saturate(b), 1);
 }
 )";
 
@@ -151,6 +159,10 @@ void VideoPipeline::shutdown() {
     if (cbuf_) {
         cbuf_->Release();
         cbuf_ = nullptr;
+    }
+    if (color_cbuf_) {
+        color_cbuf_->Release();
+        color_cbuf_ = nullptr;
     }
     if (raster_) {
         raster_->Release();
@@ -369,6 +381,14 @@ bool VideoPipeline::create_pipeline() {
     cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     device_->CreateBuffer(&cbd, nullptr, &cbuf_);
+
+    D3D11_BUFFER_DESC colord = {};
+    colord.ByteWidth = 16;
+    colord.Usage = D3D11_USAGE_DYNAMIC;
+    colord.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    colord.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    device_->CreateBuffer(&colord, nullptr, &color_cbuf_);
+    color_cbuf_dirty_ = true;
 
     D3D11_SAMPLER_DESC sd = {};
     sd.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
@@ -606,6 +626,17 @@ void VideoPipeline::decode_packet(const EncodedPacket &pkt) {
         }
         width_.store(w);
         height_.store(h);
+        if (frame->format == AV_PIX_FMT_YUVJ420P || frame->color_range == AVCOL_RANGE_JPEG) {
+            if (!full_range_) {
+                full_range_ = true;
+                color_cbuf_dirty_ = true;
+            }
+        } else if (frame->color_range == AVCOL_RANGE_MPEG) {
+            if (full_range_) {
+                full_range_ = false;
+                color_cbuf_dirty_ = true;
+            }
+        }
         if (!ensure_nv12(w, h)) {
             av_frame_unref(frame);
             continue;
@@ -726,6 +757,21 @@ void VideoPipeline::present_nv12() {
     }
     if (cbuf_) {
         ctx_->VSSetConstantBuffers(0, 1, &cbuf_);
+    }
+    if (color_cbuf_ && color_cbuf_dirty_) {
+        D3D11_MAPPED_SUBRESOURCE map = {};
+        if (SUCCEEDED(ctx_->Map(color_cbuf_, 0, D3D11_MAP_WRITE_DISCARD, 0, &map))) {
+            float *f = (float *) map.pData;
+            f[0] = full_range_ ? 1.0f : 0.0f;
+            f[1] = 0;
+            f[2] = 0;
+            f[3] = 0;
+            ctx_->Unmap(color_cbuf_, 0);
+        }
+        color_cbuf_dirty_ = false;
+    }
+    if (color_cbuf_) {
+        ctx_->PSSetConstantBuffers(1, 1, &color_cbuf_);
     }
 
     UINT stride = sizeof(Vertex), offset = 0;

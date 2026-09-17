@@ -74,7 +74,10 @@ private:
     ID3D11ShaderResourceView *srv_uv_ = nullptr;
     ID3D11RasterizerState *raster_ = nullptr;
     ID3D11Buffer *cbuf_ = nullptr;
+    ID3D11Buffer *color_cbuf_ = nullptr;
     ID3D11Texture2D *staging_ = nullptr;
+    bool full_range_ = true;
+    bool color_cbuf_dirty_ = true;
 
     void *av_hw_device_ = nullptr;
     void *av_codec_ = nullptr;
