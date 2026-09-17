@@ -32,6 +32,8 @@ AirScreen is tested with iPhone. iPad and Mac use the same protocol and may work
 
 Download the latest installer from [Releases](https://github.com/donerfolk/airscreen/releases), or [build from source](#building-from-source).
 
+The installer isn't code-signed yet, so Windows SmartScreen may show "Windows protected your PC". Click **More info → Run anyway**.
+
 ## Usage
 
 1. Start AirScreen. If Windows Firewall asks, allow access on private networks.
@@ -67,7 +69,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build.ps1
 
 `build.ps1` downloads FFmpeg into `third_party\prebuilt`, configures CMake and builds `build\Release\AirScreen.exe` with the required DLLs next to it. OpenSSL is found through `OPENSSL_ROOT_DIR`, the Shining Light install location, or vcpkg.
 
-To build an installer, compile `scripts\airscreen.iss` with [Inno Setup](https://jrsoftware.org/isinfo.php) after a Release build.
+To build an installer, run [Inno Setup](https://jrsoftware.org/isinfo.php)'s `iscc` on `scripts\airscreen.iss` after a Release build. Pass `/DCrtDir=` pointing at the `x64\Microsoft.VC143.CRT` folder of your Visual Studio redistributables so the C++ runtime ships with the app.
 
 ### Project layout
 
