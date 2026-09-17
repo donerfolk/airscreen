@@ -29,7 +29,7 @@ constexpr UINT WM_TRAY = WM_APP + 2;
 constexpr UINT kTrayId = 1;
 constexpr UINT kTimerOverlay = 1;
 constexpr UINT kTimerDisconnect = 2;
-constexpr UINT kTimerPulse = 3;
+constexpr UINT kTimerDrift = 3;
 constexpr UINT kOverlayHideMs = 2200;
 constexpr UINT kDisconnectMs = 400;
 
@@ -54,7 +54,6 @@ struct App {
     bool mirroring = false;
     bool start_failed = false;
     int hover = 0;
-    float pulse = 1.f;
     LONG windowed_style = 0;
     LONG windowed_ex = 0;
     RECT windowed_rc = {};
@@ -314,9 +313,10 @@ void paint_idle(App *app, HDC hdc, RECT rc) {
     v.always_on_top = app->settings.always_on_top;
     v.require_pin = app->settings.require_pin;
     v.fullscreen = app->fullscreen;
+    v.dark = app->settings.dark_mode;
     v.failed = app->start_failed;
     v.inset_right = 0;
-    app->shell.paint(app->hwnd, hdc, rc, v, app->hover, app->pulse);
+    app->shell.paint(app->hwnd, hdc, rc, v, app->hover);
 }
 
 void handle_tray_cmd(App *app, UINT id) {
@@ -386,6 +386,11 @@ void apply_hit(App *app, airscreen::UiHit hit) {
         break;
     case airscreen::UiHit::Pin:
         handle_tray_cmd(app, IDM_TRAY_PIN);
+        break;
+    case airscreen::UiHit::Dark:
+        app->settings.dark_mode = !app->settings.dark_mode;
+        airscreen::save_settings(app->settings);
+        InvalidateRect(app->hwnd, nullptr, FALSE);
         break;
     default:
         break;
@@ -594,8 +599,7 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         } else if (wparam == kTimerDisconnect) {
             KillTimer(hwnd, kTimerDisconnect);
             return_to_menu(app);
-        } else if (wparam == kTimerPulse && !app->mirroring) {
-            app->pulse = 0.5f + 0.5f * sinf((float) GetTickCount64() / 430.f);
+        } else if (wparam == kTimerDrift && !app->mirroring) {
             InvalidateRect(hwnd, nullptr, FALSE);
         }
         return 0;
@@ -606,6 +610,9 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
             if (hit == airscreen::UiHit::Name || hit == airscreen::UiHit::Rename) {
                 do_rename(app);
                 return 0;
+            }
+            if (hit != airscreen::UiHit::None) {
+                return 0; // a double-click on a tile is just two clicks; only the open field goes full screen
             }
         }
         toggle_fullscreen(app);
@@ -683,7 +690,7 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         ShowWindow(hwnd, SW_HIDE);
         return 0;
     case WM_DESTROY: {
-        KillTimer(hwnd, kTimerPulse);
+        KillTimer(hwnd, kTimerDrift);
         KillTimer(hwnd, kTimerOverlay);
         KillTimer(hwnd, kTimerDisconnect);
         Shell_NotifyIconW(NIM_DELETE, &app->nid);
@@ -845,7 +852,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     Shell_NotifyIconW(NIM_ADD, &app.nid);
     app.nid.uVersion = NOTIFYICON_VERSION_4;
     Shell_NotifyIconW(NIM_SETVERSION, &app.nid);
-    SetTimer(app.hwnd, kTimerPulse, 40, nullptr);
+    SetTimer(app.hwnd, kTimerDrift, 100, nullptr); // the field drifts over minutes; 10 fps is plenty
 
     timeBeginPeriod(1);
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);

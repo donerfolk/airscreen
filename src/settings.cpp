@@ -100,6 +100,8 @@ Settings load_settings() {
             s.require_pin = (val == "1" || val == "true");
         } else if (key == "FillScreen") {
             s.fill_screen = (val == "1" || val == "true");
+        } else if (key == "DarkMode") {
+            s.dark_mode = (val == "1" || val == "true");
         } else if (key == "Width") {
             s.width = std::stoi(val);
         } else if (key == "Height") {
@@ -118,6 +120,7 @@ void save_settings(const Settings &s) {
     out << "AlwaysOnTop=" << (s.always_on_top ? 1 : 0) << "\n";
     out << "RequirePin=" << (s.require_pin ? 1 : 0) << "\n";
     out << "FillScreen=" << (s.fill_screen ? 1 : 0) << "\n";
+    out << "DarkMode=" << (s.dark_mode ? 1 : 0) << "\n";
     out << "Width=" << s.width << "\n";
     out << "Height=" << s.height << "\n";
     out << "MaxFps=" << s.max_fps << "\n";
