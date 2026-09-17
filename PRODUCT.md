@@ -22,7 +22,7 @@ Success: iPhone lists **AirScreen**, tap connects, video and audio play with low
 
 ## Positioning
 
-Windows AirPlay Screen Mirroring receiver with an original Continuity-style UI and a custom decode/present path (no GStreamer). Protocol from UxPlay (GPLv3).
+Windows AirPlay Screen Mirroring receiver with an original ambient-display UI and a custom decode/present path (no GStreamer). Protocol from UxPlay (GPLv3).
 
 ## Operating Context
 
@@ -31,14 +31,14 @@ Used in a dim room or at a desk, often as a second display. Waiting is the defau
 ## Capabilities and Constraints
 
 - Advertise as AirPlay receiver; rename; optional PIN; firewall helper; fullscreen; always-on-top
-- Native Win32 shell (not Electron). Idle UI is GDI+; mirrored video is D3D11
-- Must stay readable at 720×480 through 1080p, per-monitor DPI
+- Native Win32 shell (not Electron). Idle UI is a per-pixel field plus GDI+; mirrored video is D3D11
+- Must stay readable at 720×480 through 1080p, per-monitor DPI, and on Windows 10 without Segoe UI Variable
 - [Assumption] No brand guidelines beyond the name AirScreen
 
 ## Brand Commitments
 
 Name: AirScreen. Voice: direct, physical, no marketing claims.
-Visual world: Apple Continuity / Screen Mirroring language on Windows — frosted glass plate, SF-style type, text controls — never fake macOS chrome.
+Visual world: an ambient screen waiting for a picture — a full-bleed state field, the receiver name in large white system type, flat controls. Never fake macOS chrome; never a card-in-a-window settings panel or frosted-glass plate (retired 2026-09-13 as outdated).
 
 ## Evidence on Hand
 

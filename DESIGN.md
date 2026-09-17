@@ -1,276 +1,285 @@
 ---
 name: AirScreen
-description: Continuity plate idle shell — full-bleed glass, the receiver name is the object.
+description: Ambient Field idle window — a dusk-toned state field the iPhone's picture replaces, with the receiver name set huge on it.
 colors:
-  field: "#0a0a0c"
-  plate: "#2c2c2e"
-  plate-hi: "#3a3a3c"
-  capsule-rest: "#1c1c1e"
-  rim: "#8e8e93"
-  hairline: "#48484a"
-  label: "#f5f5f7"
-  secondary: "#86868b"
-  on-ink: "#ffffff"
-  blue: "#0a84ff"
-  wait: "#8e8e93"
-  live: "#30d158"
-  pair: "#ff9f0a"
-  fail: "#ff453a"
+  wait-top: "#1c3272"
+  wait-deep: "#0b1536"
+  wait-bloom: "#4a86d8"
+  wait-violet: "#6d5bc4"
+  wait-ink: "#13245a"
+  pair-top: "#6e4418"
+  pair-deep: "#2a180a"
+  pair-bloom: "#d9974a"
+  pair-rose: "#b86a5a"
+  live-top: "#1a5040"
+  live-deep: "#08201a"
+  live-bloom: "#54b27e"
+  fail-top: "#303036"
+  fail-deep: "#151518"
+  fail-ember: "#c05a50"
+  fail-haze: "#4e4e56"
+  label: "#ffffff"
+  label-soft: "rgba(255, 255, 255, 0.84)"
+  tile-rest: "rgba(255, 255, 255, 0.16)"
+  tile-hover: "rgba(255, 255, 255, 0.27)"
+  ghost-rim: "rgba(255, 255, 255, 0.47)"
+  ghost-hover: "rgba(255, 255, 255, 0.14)"
 typography:
   display:
-    fontFamily: "SF Pro Display Medium, SF Pro Display Semibold, SF Pro Display, Segoe UI Variable Display Semibold, Segoe UI Variable Display, Segoe UI"
-    fontSize: "clamp(40px, 14.3vw, 84px)"
+    fontFamily: "Segoe UI Variable Display Semibold, Segoe UI Semibold, Segoe UI"
+    fontSize: "clamp(44px, min(10.5vw, 20vh), 168px)"
     fontWeight: 600
-    lineHeight: 1.28
-    letterSpacing: "-0.10em"
+    lineHeight: 1.33
+    letterSpacing: "normal"
   pin:
-    fontFamily: "SF Pro Display, Segoe UI Variable Display, Segoe UI"
-    fontSize: "clamp(56px, 16vw, 96px)"
-    fontWeight: 400
-    lineHeight: 1.2
-    letterSpacing: "normal"
-  title:
-    fontFamily: "SF Pro Text, SF Pro, Segoe UI Variable Text, Segoe UI Variable, Segoe UI"
-    fontSize: "13px"
-    fontWeight: 400
-    lineHeight: 1.3
-    letterSpacing: "normal"
-  body:
-    fontFamily: "SF Pro Text, SF Pro, Segoe UI Variable Text, Segoe UI Variable, Segoe UI"
+    fontFamily: "Segoe UI Variable Display Semibold, Segoe UI Semibold, Segoe UI"
+    fontSize: "clamp(64px, min(16vw, 30vh), 220px)"
+    fontWeight: 600
+    lineHeight: 1.33
+    letterSpacing: "0.06em"
+  state:
+    fontFamily: "Segoe UI Variable Text Semibold, Segoe UI Semibold, Segoe UI"
     fontSize: "17px"
+    fontWeight: 600
+    lineHeight: 1.33
+  route:
+    fontFamily: "Segoe UI Variable Text, Segoe UI"
+    fontSize: "15px"
     fontWeight: 400
-    lineHeight: 1.3
-    letterSpacing: "normal"
+    lineHeight: 1.33
   label:
-    fontFamily: "SF Pro Text, SF Pro, Segoe UI Variable Text, Segoe UI Variable, Segoe UI"
-    fontSize: "12px"
-    fontWeight: 400
-    lineHeight: 1.2
-    letterSpacing: "normal"
+    fontFamily: "Segoe UI Variable Text Semibold, Segoe UI Semibold, Segoe UI"
+    fontSize: "13px"
+    fontWeight: 600
+    lineHeight: 1.33
 rounded:
-  plate: "28px"
-  stadium: "999px"
-  gear: "999px"
+  tile: "12px"
 spacing:
-  field: "24px"
-  plate-top: "22px"
-  pad: "36px"
-  gap: "10px"
-  inset: "12px"
-  tight: "6px"
+  margin: "clamp(32px, 6vw, 72px)"
+  floor-gap: "48px"
+  route-gap: "22px"
+  tile-gap: "8px"
+  action-split: "20px"
+  tile-pad: "14px"
+  tile-pad-compact: "10px"
+  icon-gap: "8px"
+  chevron-gap: "10px"
 components:
-  plate:
-    backgroundColor: "{colors.plate}"
-    textColor: "{colors.label}"
-    rounded: "{rounded.plate}"
-    padding: "{spacing.pad}"
-  pill:
-    backgroundColor: "{colors.plate-hi}"
+  tile-off:
+    backgroundColor: "{colors.tile-rest}"
     textColor: "{colors.label}"
     typography: "{typography.label}"
-    rounded: "{rounded.stadium}"
-    width: "108px"
-    height: "28px"
-  capsule-off:
-    backgroundColor: "{colors.capsule-rest}"
-    textColor: "{colors.secondary}"
-    typography: "{typography.label}"
-    rounded: "{rounded.stadium}"
-    padding: "0 10px 0 12px"
-    height: "44px"
-  capsule-off-hover:
-    backgroundColor: "{colors.plate-hi}"
+    rounded: "{rounded.tile}"
+    padding: "0 14px"
+    height: "40px"
+  tile-off-hover:
+    backgroundColor: "{colors.tile-hover}"
     textColor: "{colors.label}"
     typography: "{typography.label}"
-    rounded: "{rounded.stadium}"
-    padding: "0 10px 0 12px"
-    height: "44px"
-  capsule-on:
-    backgroundColor: "{colors.blue}"
-    textColor: "{colors.on-ink}"
+    rounded: "{rounded.tile}"
+    padding: "0 14px"
+    height: "40px"
+  tile-on:
+    backgroundColor: "{colors.label}"
+    textColor: "{colors.wait-ink}"
     typography: "{typography.label}"
-    rounded: "{rounded.stadium}"
-    padding: "0 10px 0 12px"
-    height: "44px"
+    rounded: "{rounded.tile}"
+    padding: "0 14px"
+    height: "40px"
+  action-ghost:
+    backgroundColor: "transparent"
+    textColor: "{colors.label}"
+    typography: "{typography.label}"
+    rounded: "{rounded.tile}"
+    padding: "0 14px"
+    height: "40px"
+  action-ghost-hover:
+    backgroundColor: "{colors.ghost-hover}"
+    textColor: "{colors.label}"
+    typography: "{typography.label}"
+    rounded: "{rounded.tile}"
+    padding: "0 14px"
+    height: "40px"
+  state-line:
+    backgroundColor: "transparent"
+    textColor: "{colors.label-soft}"
+    typography: "{typography.state}"
   receiver-name:
     backgroundColor: "transparent"
     textColor: "{colors.label}"
-    typography: "{typography.display}"
-  receiver-name-hover:
-    backgroundColor: "transparent"
-    textColor: "{colors.on-ink}"
     typography: "{typography.display}"
   pin-digits:
     backgroundColor: "transparent"
     textColor: "{colors.label}"
     typography: "{typography.pin}"
-  wordmark:
+  route:
     backgroundColor: "transparent"
-    textColor: "{colors.secondary}"
-    typography: "{typography.title}"
-  gear:
-    backgroundColor: "{colors.plate}"
-    textColor: "{colors.label}"
-    rounded: "{rounded.gear}"
-    size: "40px"
-  gear-hover:
-    backgroundColor: "{colors.plate-hi}"
-    textColor: "{colors.label}"
-    rounded: "{rounded.gear}"
-    size: "40px"
+    textColor: "{colors.label-soft}"
+    typography: "{typography.route}"
 ---
 
 # Design System: AirScreen
 
 ## Overview
 
-**Creative North Star: "The Continuity Plate"**
+**Creative North Star: "The Ambient Field"**
 
-The idle window is a dim display with no signal: a near-black field and one frosted glass plate. The object on that plate is the receiver name iPhone will list — not a dashboard, not a settings page. Status is a small pill and one muted line. Controls sit on the floor as outlined capsules. When a pairing PIN appears, it takes the plate; the name and the capsules leave.
+The idle window is a screen waiting for a picture. There is no card, plate, or panel: the whole client area is a dusk-toned color field lit by two soft blooms, and the iPhone's mirrored video replaces it edge to edge when it arrives. The field is the status. Blue means waiting, amber means a pairing PIN is on screen, green means an iPhone has connected, graphite means the receiver could not start. The tones are muted on purpose: clearly colored, never electric, calm enough to sit next to a desk lamp all evening.
 
-This is Apple Continuity language on a native Win32 client, not a macOS window replica. Type is SF Pro when the machine has it, otherwise Segoe UI Variable. Display faces render medium or semibold (bold only if those cuts are missing). The plate is opaque graphite with a white sheen and a hairline rim — GDI+ cannot photograph blur, and the system does not pretend it can.
+Type sits directly on the field in white, lifted by a soft shadow tinted from the field. A one-line state sentence holds the top-left corner. The receiver name iPhone will list anchors the bottom-left at display size, with the route to it underneath. Rename and three toggles line the floor as flat tiles. A PIN takes the name's place and the tiles leave.
 
-Sizes are device-independent pixels at 96 DPI (`MulDiv(value, dpi, 96)`). The default window is 1100×720; the shell will not shrink below 720×480.
+Everything is painted by `ShellUi::paint` in `src/ui.cpp`: the field per pixel into a 32-bit DIB, with about one level of dither so long gradients never band; then the text shadow, blurred from a quarter-scale mask straight into the same pixels; then GDI+ for type, tiles, and stroke icons. Sizes are device-independent pixels at 96 DPI (`value × dpi / 96`). The default window is 1100×720 and the shell will not shrink below 720×480.
 
 **Key Characteristics:**
-- Full-bleed glass plate on a near-black field, 24px margin — plate clearly floats
-- Receiver name as the only large object (tracking 0.90, clamp 40–84px)
-- Recessed stadium capsules; Continuity Blue only when a control is on
-- Status in a top-right pill plus one muted line under the name
-- PIN replaces the name at the same optical center; capsules hide
+- Full-bleed state field with no container; color carries connection state
+- Muted dusk tones: saturated enough to name the state, never neon
+- Two blooms drift over minutes while waiting or connected; pairing and failure hold still
+- White type on the field lifted by a soft shadow in the field's own deep tone
+- State sentence top-left; receiver name (or PIN) bottom-left at display size; route beneath the name
+- Flat translucent tiles that flood solid white when on
+- A dark mode toggle in the top-right corner dims every field; waiting becomes midnight blue
 
 ## Colors
 
-Graphite Continuity palette: two stacked darks, one blue that appears only as an on-state, and four status lights that live in the pill dot.
+A committed strategy in dusk tones: one muted but clearly colored field per state carries the entire surface, and white is the only ink on it. Every field is a 70° wash from its top tone to its deep tone, running top-left to bottom-right, plus two blooms that fall off as (1 − d²)² to nothing at their radius. Bloom strengths stay between roughly a third and two thirds so no glow ever burns.
 
 ### Primary
-- **Continuity Blue** (`{colors.blue}`): Fill for a floor capsule whose setting is on (Full Screen, Always on Top, Require PIN). Never used on the field, the plate, the idle pill, or the wordmark.
+- **Dusk Blue** (`{colors.wait-top}` → `{colors.wait-deep}`): the default field, shown while the receiver waits or starts.
+- **Sky Bloom** (`{colors.wait-bloom}`, 62%): upper-right bloom on the waiting field, radius 62% of the window width. Also the second bloom on the connected field at 36%.
+- **Slate Violet Bloom** (`{colors.wait-violet}`, 50%): upper-left bloom on the waiting field, radius 46% of the width.
+- **Waiting Ink** (`{colors.wait-ink}`): icon and label ink on a tile flooded white. Each field supplies its own ink from its deep tone (amber `#3e240e`, green `#0c3428`, graphite `#1e1e22`).
+
+### Secondary
+- **Pairing Amber** (`{colors.pair-top}` → `{colors.pair-deep}`): the field while a PIN is on screen, with `{colors.pair-bloom}` at 60% and `{colors.pair-rose}` at 45%.
+- **Live Green** (`{colors.live-top}` → `{colors.live-deep}`): the field after an iPhone connects and before video arrives, with `{colors.live-bloom}` at 52%.
 
 ### Tertiary
-- **Wait Gray** (`{colors.wait}`): Idle pill dot.
-- **Live Green** (`{colors.live}`): Connected pill dot.
-- **Pairing Amber** (`{colors.pair}`): PIN-on-plate pill dot.
-- **Fail Red** (`{colors.fail}`): Start-failed pill dot.
+- **Graphite Failure** (`{colors.fail-top}` → `{colors.fail-deep}`): the field when the receiver could not start, with a `{colors.fail-ember}` glow at 32% and `{colors.fail-haze}` at 50%.
 
 ### Neutral
-- **Graphite Field** (`{colors.field}`): Near-black window fill so the plate floats (`#0a0a0c`).
-- **Frosted Plate** (`{colors.plate}`): The glass card base; painted with a slight vertical lift and strong frost sheen.
-- **Plate Lift** (`{colors.plate-hi}`): Capsule hover fill, gear hover fill.
-- **Capsule Rest** (`{colors.capsule-rest}`): Recessed off-state capsule fill (`#1c1c1e`), darker than the plate so controls read as sunk Control Center tiles.
-- **Glass Rim** (`{colors.rim}`): Plate stroke (`#8e8e93`) — bright enough to read as a glass lip.
-- **Hairline** (`{colors.hairline}`): Capsule outline when off (lifts toward rim on hover).
-- **Label** (`{colors.label}`): Name, PIN, pill text, on-state / hover ink.
-- **Secondary Label** (`{colors.secondary}`): Wordmark, status line, how-to line, off-state capsule ink (`#86868b`).
-- **On Ink** (`{colors.on-ink}`): Name hover, and ink on a blue capsule.
+- **Label White** (`{colors.label}`): receiver name, PIN, the state sentence outside waiting, tile labels and icons, the route's name segment, and the fill of an on tile.
+- **Soft Light** (`{colors.label-soft}`): the waiting state sentence, route steps and chevrons, and the name's hover pencil. It is white at 84% so it takes the field's hue instead of reading gray.
+- **Tile Rest / Tile Hover** (`{colors.tile-rest}` / `{colors.tile-hover}`): off toggle fills.
+- **Ghost Rim / Ghost Hover** (`{colors.ghost-rim}` / `{colors.ghost-hover}`): the Rename action's outline and hover fill.
 
 ### Named Rules
-**The Blue-When-On Rule.** Continuity Blue fills a control only while that control is on. Idle chrome stays graphite.
+**The Field-Is-Status Rule.** Connection state is shown by the field's color, never by a dot, pill, or badge. A new state gets a new field.
 
-**The Pill-Dot Rule.** Wait, pair, live, and fail exist only as the status-pill dot (plus its soft pulse glow). They do not color the plate, the name, or the capsules.
+**The Dusk Rule.** Fields and blooms stay muted: no fully saturated system blue, orange, or green, and no bloom above two-thirds strength. A state must be recognizable, not glaring.
+
+**The White-Ink Rule.** Nothing on the field is colored. Text, icons, and tiles are white at full, 84%, or translucent strength; the only dark ink sits on a tile flooded white.
+
+**The Dark-Corner Rule.** Blooms live in the upper half. The bottom-left stays the darkest region of every field so white text holds contrast there.
+
+### Dark mode
+Dark mode keeps every field and changes only its brightness: each field's top and deep tones drop to 35%, and both blooms drop to 60% brightness at 45% of their strength. Waiting becomes a deep midnight blue (about `#091127` → `#030712`); pairing, connected, and failed become darker amber, green, and graphite, so the state still reads by hue. Type, tiles, inks, and the text shadow recipe are unchanged.
+
+**The Midnight Rule.** Dark mode is one dimming applied to all four fields, never a separate palette and never a single color for every state.
 
 ## Typography
 
-**Display Font:** SF Pro Display Medium / Semibold (fallback Segoe UI Variable Display Semibold, then Segoe UI)
-**Body Font:** SF Pro Text (fallback Segoe UI Variable Text, then Segoe UI)
+**Display Font:** Segoe UI Variable Display Semibold (fallback Segoe UI Semibold)
+**Body Font:** Segoe UI Variable Text and Text Semibold (fallback Segoe UI and Segoe UI Semibold)
 
-**Character:** One San Francisco family on Windows. Quiet UI text; the name is the only display line, tracked tight so it sits as a single object.
-
-Probe order in the shell: display medium/semibold cuts first; if the face name does not contain “Medium” or “Semibold”, the name uses bold on the regular display cut. PIN uses the regular display face, not the medium cut, and does not apply tracking.
+**Character:** The platform's own face, set the way ambient screens set the system face: very large, flush left, one weight step, no tracking tricks. Windows 10 has no Variable cuts, so Segoe UI Semibold carries the whole hierarchy there and the layout must read in both.
 
 ### Hierarchy
-- **Display** (600, clamp 40–84px from inner width / 7.0, line-height 1.28, tracking 0.90 / `-0.10em`): Receiver name, centered at ~38% of plate height.
-- **PIN** (400, max(64px, inner width / 5.6)): Pairing digits; owns the plate at ~24% height; no tracking; hint 14px beneath.
-- **Title** (400, 13px): Wordmark “AirScreen” top-left; how-to line under status.
-- **Body** (400, 17px): Status under the name (“Waiting for iPhone”) and the PIN hint (“Enter this PIN on your iPhone”).
-- **Label** (400, 12px): Status-pill text and capsule labels.
+- **Display** (600, min(10.5% of width, 20% of height), clamped 44–168px): the receiver name. It shrinks to fit the line, never below 36px, then ends in an ellipsis.
+- **PIN** (600, min(16% of width, 30% of height), clamped 64–220px, digits spaced 0.06em): pairing digits, placed one glyph at a time so they read back easily.
+- **State** (600, 17px): the top-left state sentence.
+- **Route** (400, 15px; the name segment 600): Control Center › Screen Mirroring › name.
+- **Label** (600, 13px): tile labels.
 
 ### Named Rules
-**The Tight-Name Rule.** Only the receiver name is tracked (glyph advance × 0.90) and cut medium/semibold. PIN, status, and controls stay untracked regular text.
+**The One-Family Rule.** Segoe UI only, at 400 and 600. No second family, no uppercase, no letterspaced labels.
 
-**The Two-Face Rule.** Display cuts for the name and PIN; Text cuts for everything else. Do not mix in a third family.
+**The Baseline Rule.** Every line starts on the same left margin, and baselines are placed from the font's cell ascent, not from layout boxes, so the lockup aligns to the pixel.
 
 ## Layout
 
-Client area is the field. The plate is inset `{spacing.field}` (24px) on all sides. If that plate would be narrower than 200px it becomes 92% of the window; if shorter than 160px it becomes 88% of the height. Inner content inset is `{spacing.pad}` (36px) left/right/bottom and `{spacing.plate-top}` (22px) at the top.
+The client area is the canvas; there is no inset container. The margin is 6% of the width, clamped to 32–72px, on every side.
 
-Header row: wordmark left, status pill right (108×28px), sharing a 28px-tall band. The receiver name sits at ~38% of the plate height. Status follows 12px under the name; the how-to line 10px under that, and lifts to 30px above the capsules if it would collide. Capsules are a 44px-tall floor row, 10px gaps, equal width, minimum 96px each, hidden while a PIN is showing or the window is fullscreen.
+- **Top-left:** the state sentence, its cap height sitting on the top margin.
+- **Top-right:** the dark mode toggle, a 40px square tile on the right margin, centred on the state sentence's cap height. The state sentence stops 56px short of it. It hides along with the floor tiles.
+- **Floor:** 40px tiles on the bottom margin, sized to their content and left-aligned. Rename comes first, then a 20px split, then Full Screen, Always on Top, and Require PIN 8px apart. When the row would cross the right margin, icons drop and side padding tightens from 14px to 10px.
+- **Lockup:** stacks upward from 48px above the tiles, or from the bottom margin when the tiles are hidden. The route sits on that line; the name sits 22px above the route's cap height, with 22% of its own size reserved beneath for descenders.
+- **Pairing:** tiles and route hide; the PIN digits sit on the bottom margin.
+- **Full screen while idle:** tiles hide; the state sentence and lockup stay.
 
-The live video surface is D3D11 and fills the client when connected; this document does not specify that picture. The 40px circular gear is live-overlay chrome only (12px from the top-right of the client), hidden on the idle plate.
+The live video surface (D3D11) fills the client while mirroring and is outside this system.
 
 ### Named Rules
-**The Optical-Center Rule.** The name is the object at ~38% of the plate. A PIN replaces it at ~24% of the plate. Nothing else is allowed to become large.
+**The Open-Top Rule.** The upper field stays empty apart from the state sentence. Content anchors low, like a lower third, so the window reads as a screen rather than a page.
 
 ## Elevation & Depth
 
-Depth is tonal stacking plus a visible umbra and painted frost — not drop-shadow chrome and not backdrop blur. The field is near-black. The plate sits on fourteen stacked black rounds (alpha ~11–50, shifted down and expanded) so it clearly floats. Inside the plate, a vertical white gradient (alpha 110 → 0) covers the top 62% of the height, with a brighter 22px top-edge wash (alpha 150 → 0) and a 1.25px inner top hairline (white alpha 70). A 1.35px `{colors.rim}` stroke seals the glass. The pill is recessed (`#242426`) with a hairline; its dot pulses with a readable glow.
+Nearly flat. Depth comes from the field itself, the diagonal wash and its two blooms, plus one shadow: everything typeset straight on the field (state sentence, name or PIN, route and its chevrons) casts a soft drop shadow. The shadow is dropped 3px, blurred to roughly 12px (two box-blur passes each way on a quarter-scale mask, close to a Gaussian), and tinted with the field's deep tone at one third brightness, darkening the field by up to 55%. Thin lines get extra mask gain so small text still lifts; large type does not choke. Tiles and their labels cast nothing.
+
+Motion is the drift of the bloom centers along slow sine paths (periods of 48–90 seconds, amplitude 7–8% of the window), repainted on a 100 ms timer. The field holds still during pairing, on failure, and whenever Windows client-area animation is turned off.
 
 ### Shadow Vocabulary
-- **Plate umbra** (fourteen GDI+ rounds, black alpha ~11–50, y += i×1.6): Under the plate only.
-- **Dot glow** (ellipse, status color, pulse alpha): Around the pill dot only.
-- **ON capsule sheen** (white alpha 90 → 0 over top 50%): Lift on Continuity Blue fills only.
+- **Field text** (offset 0 3px, blur ~12px, field deep tone ÷ 3 at up to 55%): under every piece of type set directly on the field, never under tiles.
 
 ### Named Rules
-**The Sheen-Not-Blur Rule.** Frost is a white gradient on opaque plate color — strong enough to read as glass. Do not introduce backdrop-filter, glass photography, or extra shadow layers on every control.
+**The Lift-Not-Halo Rule.** The text shadow always has a downward offset and a soft blur, and always takes its color from the field. No black shadows, no zero-offset glows, no shadows on tiles.
+
+**The No-Chrome Rule.** No gloss gradients, frosted panels, rims, or container outlines. When something needs separation, change its fill strength.
 
 ## Shapes
 
-The plate is a 28px-radius round rect — the only large corner. Every control is a stadium: radius = half its height (pill 14px, capsules 22px). The live gear is a circle (window region = size) with a 1px `{colors.rim}` hairline (brighter on hover). Capsule icons are 14px stroked GDI+ marks (round caps and joins, stroke ≈ 1.25px), optically lifted 0.5px in the stadium: pencil, display, pin, lock. The app mark is a rounded display body in plate lift → plate dark with a pale frosted glass screen and hairline rim — not a logo lockup, not amber chrome.
-
-### Named Rules
-**The Outlined-Capsule Rule.** Off = rest fill + 1px hairline (rim lifts on hover). On = solid blue + quiet top sheen, no outline. Icons stay strokes, not fills and not font glyphs.
+Tiles are rounded rectangles with a 12px radius at 40px tall: soft corners, not stadiums. Icons are 16px strokes at 1.6px with round caps and joins: a pencil, four corner brackets for Full Screen, a pushpin for Always on Top, a padlock for Require PIN, a crescent moon for dark mode. Route separators are drawn 7px chevrons at 1.5px, never a text glyph. The pencil that appears beside the name on hover scales with it (26% of the name size, 18–34px).
 
 ## Components
 
 ### Buttons
-Floor capsules are the only idle buttons.
+**Toggle tiles** (Full Screen, Always on Top, Require PIN): flat, light, and only as wide as their content.
+- **Shape:** 12px radius, 40px tall, 14px side padding, 8px between icon and label
+- **Off:** `{colors.tile-rest}` fill with white icon and label
+- **Hover:** `{colors.tile-hover}` fill
+- **On:** floods solid white; icon and label take the field's ink. Hover dims the fill to 91% white.
 
-- **Shape:** Stadium (radius 22px), height 44px, min width 96px
-- **Off:** `{colors.capsule-rest}` fill, `{colors.hairline}` 1px stroke, `{colors.secondary}` ink
-- **Hover:** `{colors.plate-hi}` fill, lifted `{colors.rim}` stroke, `{colors.label}` ink
-- **On:** `{colors.blue}` fill, quiet white top sheen, no stroke, `{colors.on-ink}` ink
-- **Content:** 14px stroke icon (≈1.25px, optically −0.5px Y), 6px gap, 12px label. Labels: Rename, Full Screen, Always on Top, Require PIN. Rename never takes the on fill.
+**Rename action:** a ghost tile, so an action never looks like a switch that is off.
+- **Rest:** no fill, a 1.25px `{colors.ghost-rim}` outline, white icon and label
+- **Hover:** `{colors.ghost-hover}` fill
 
-### Chips
-- **Style:** Status pill, 108×28px stadium, `{colors.plate-hi}` fill, no stroke
-- **State:** Dot + label. Waiting / Pairing / Live / Failed. Dot color from the tertiary set; label always `{colors.label}`
-
-### Cards / Containers
-- **Corner Style:** 28px
-- **Background:** `{colors.plate}` with inner sheen
-- **Shadow Strategy:** Plate umbra only
-- **Border:** 1.15px `{colors.rim}`
-- **Internal Padding:** 36px (22px top)
-
-### Inputs / Fields
-Rename uses a native Windows dialog, not plate chrome. The receiver name is a hit target (hand cursor, brightens to on-ink) that opens that dialog. Do not draw an inline text field on the plate.
-
-### Navigation
-Not a nav bar. Wordmark “AirScreen” in secondary 13px at the top-left of the plate; status pill at the top-right. Native Win32 caption remains OS chrome and is outside this system.
+**Dark mode toggle:** a 40px square tile in the top-right corner holding a stroked crescent moon, no label.
+- **Off:** `{colors.tile-rest}` fill with a white moon; hover `{colors.tile-hover}`
+- **On:** floods solid white with the moon in the field's ink; hover dims to 91% white
+- **Behavior:** a click flips dark mode and saves it as `DarkMode` in `settings.ini`. Double-clicking any tile is two clicks; only a double-click on the open field toggles full screen.
 
 ### Receiver name
-The product. Centered, tracked, display medium/semibold. Example copy for specs: **AirScreen**. The visible string is the user’s receiver name, never canned marketing. How-to line: `On iPhone: Control Center  →  Screen Mirroring  →  {name}`.
+The object on the field. White display type at the bottom-left with the field-text shadow. It is a hit target with a hand cursor that opens the native rename dialog; on hover a Soft Light pencil appears after the last glyph. Use **AirScreen** as the example name in specs.
 
 ### Pairing PIN
-When present, the name, how-to, and capsules hide. Digits are regular display type, centered, with the 17px hint beneath. Pill switches to Pairing / amber.
+When a PIN arrives the field turns amber and stops drifting, the state sentence reads "Enter this PIN on your iPhone", and the digits replace the name at PIN size. Tiles and route leave.
 
-### App mark
-16px / 32px GDI+ icon (and `scripts/make-icon.py` → `app.ico` / `logo.png`): rounded plate body (plate-hi → darker plate), pale frosted glass screen with top wash, hairline rim. Used for the window and tray. Not a wordmark replacement.
+### State sentence
+Top-left at 17px semibold. "Waiting for iPhone" is Soft Light; "Starting AirPlay…", "Connected — {device}", the PIN instruction, and failure text are Label White.
 
-### Gear (live overlay)
-40px circle, `{colors.plate}` at rest, `{colors.plate-hi}` on hover, 1px rim (`{colors.rim}` / brighter on hover), `{colors.label}` MDL2 glyph optically centered (~17px). Idle waiting does not show it. Video owns the window when live.
+### Route
+"Control Center › Screen Mirroring › {name}" under the name while waiting: steps in Soft Light, the name segment in white semibold, drawn chevrons between. Hidden once connected, failed, or pairing.
+
+### Inputs / Fields
+Rename uses the native Windows dialog (`IDD_RENAME`). Do not draw an inline text field on the field.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep the plate full-bleed with a 24px field margin and a 28px corner.
-- **Do** treat the receiver name as the only large object; use AirScreen as the spec example name.
-- **Do** draw floor capsules outlined at rest and Continuity Blue only when on.
-- **Do** let a PIN replace the name and hide the capsules.
-- **Do** use stroked GDI+ marks (pencil, display, pin, lock) at 14px for capsule icons.
+- **Do** let the field's color say the state: blue waiting, amber pairing, green connected, graphite failed.
+- **Do** keep every field and bloom muted, dusk rather than daylight.
+- **Do** apply dark mode as one dimming of all four fields, so waiting turns midnight blue and states still differ by hue.
+- **Do** keep blooms in the upper half and text in the bottom-left and top-left.
+- **Do** set the receiver name huge and flush left, shrinking it to fit before truncating.
+- **Do** give type on the field its soft, offset, field-tinted shadow.
+- **Do** flood an on toggle solid white so on and off read without color.
+- **Do** hold the field still while pairing, on failure, and when Windows animations are off.
+- **Do** draw icons and separators as strokes (1.6px icons, 1.5px chevrons).
 
 ### Don't:
+- **Don't** put the idle UI in a card, plate, or panel, or bring back the frosted-glass look.
+- **Don't** use fully saturated system colors or blooms above two-thirds strength.
+- **Don't** add a status dot, pill, or badge; the field is the status.
+- **Don't** put a label directly above the name or the PIN.
+- **Don't** color text or icons on the field.
+- **Don't** add black shadows, glows, sheens, rims, glass, or shadows under tiles.
 - **Don't** draw fake macOS traffic lights or an Apple logo.
-- **Don't** put Continuity Blue on idle or waiting chrome.
-- **Don't** introduce a third type family, kickers, or uppercase eyebrows.
-- **Don't** fill the plate with settings; waiting is a display with no signal.
-- **Don't** box PIN digits or add extra cards — one plate, one object.
