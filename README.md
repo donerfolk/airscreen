@@ -8,6 +8,10 @@
   Mirror your iPhone to a Windows PC over AirPlay. Free and open source.
 </p>
 
+<p align="center">
+  <a href="https://buymeacoffee.com/donerfolk"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="40" alt="Buy Me A Coffee"></a>
+</p>
+
 ---
 
 AirScreen turns a Windows PC into an AirPlay receiver. Your iPhone lists it under **Control Center → Screen Mirroring**, just like an Apple TV. Video and audio play in a resizable window or full screen.
