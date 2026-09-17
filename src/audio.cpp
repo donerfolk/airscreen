@@ -80,6 +80,14 @@ void write_silence(BYTE *dest, UINT32 frames, int channels, int bits) {
     memset(dest, 0, (size_t) frames * (size_t) channels * (size_t) bytes_ps);
 }
 
+// ponytail: fixed jitter depth, make adaptive if Wi-Fi jitter varies a lot between setups
+const int kTargetMs = 80; // cushion to build before (re)starting playback
+const int kMaxMs = 250;   // past this, skip back to kTargetMs
+
+size_t ms_to_samples(int rate, int ch, int ms) {
+    return (size_t) rate * (size_t) ch * (size_t) ms / 1000;
+}
+
 DWORD WINAPI audio_thread_proc(LPVOID p) {
     auto *self = static_cast<AudioPipeline *>(p);
     self->render_thread();
@@ -168,6 +176,13 @@ void AudioPipeline::stop_locked() {
     pcm_passthrough_ = false;
     src_fmt_ = -1;
     std::lock_guard<std::mutex> lock(mu_);
+    if (rebuffers_ || dropped_) {
+        alog("audio stats: %u rebuffers, %u ms dropped", rebuffers_,
+             (unsigned) (dropped_ / std::max<size_t>(1, ms_to_samples(out_rate_, out_ch_, 1))));
+    }
+    rebuffers_ = 0;
+    dropped_ = 0;
+    buffering_ = true;
     ring_.clear();
     rpos_ = wpos_ = count_ = 0;
 }
@@ -176,6 +191,7 @@ void AudioPipeline::flush() {
     std::lock_guard<std::mutex> dlock(dec_mu_);
     std::lock_guard<std::mutex> lock(mu_);
     rpos_ = wpos_ = count_ = 0;
+    buffering_ = true;
     if (av_codec_) {
         avcodec_flush_buffers((AVCodecContext *) av_codec_);
     }
@@ -436,7 +452,7 @@ void AudioPipeline::push_pcm(const int16_t *pcm, int frames, int channels) {
     }
     size_t samples = (size_t) frames * (size_t) channels;
     size_t cap = ring_.size();
-    size_t max_keep = (size_t) out_rate_ * (size_t) out_ch_ * 50 / 1000;
+    size_t max_keep = ms_to_samples(out_rate_, out_ch_, kMaxMs);
     if (max_keep < samples) {
         max_keep = samples;
     }
@@ -444,12 +460,14 @@ void AudioPipeline::push_pcm(const int16_t *pcm, int frames, int channels) {
         max_keep = cap;
     }
     if (count_ + samples > max_keep) {
-        size_t drop = count_ + samples - max_keep;
+        // Skip back to the target depth rather than riding at max latency.
+        size_t drop = count_ + samples - ms_to_samples(out_rate_, out_ch_, kTargetMs);
         if (drop > count_) {
             drop = count_;
         }
         rpos_ = (rpos_ + drop) % cap;
         count_ -= drop;
+        dropped_ += drop;
     }
     float vol = volume_.load();
     for (size_t i = 0; i < samples; ++i) {
@@ -565,13 +583,27 @@ void AudioPipeline::render_thread() {
             std::lock_guard<std::mutex> lock(mu_);
             size_t cap = ring_.size();
             size_t n = 0;
-            if (cap) {
+            size_t target = ms_to_samples(out_rate_, out_ch_, kTargetMs);
+            if (buffering_ && count_ >= target) {
+                // Cushion is ready; start at target depth even if a burst piled up meanwhile.
+                size_t drop = count_ - target;
+                rpos_ = (rpos_ + drop) % cap;
+                count_ -= drop;
+                dropped_ += drop;
+                buffering_ = false;
+            }
+            if (!buffering_) {
                 n = count_ < need ? count_ : need;
                 for (size_t i = 0; i < n; ++i) {
                     tmp[i] = ring_[rpos_];
                     rpos_ = (rpos_ + 1) % cap;
                 }
                 count_ -= n;
+                if (n < need) {
+                    // Underrun: go quiet and rebuild the cushion instead of stuttering on every late packet.
+                    buffering_ = true;
+                    ++rebuffers_;
+                }
             }
             if (n < need) {
                 memset(tmp.data() + n, 0, (need - n) * sizeof(int16_t));
