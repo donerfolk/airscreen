@@ -1,0 +1,44 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenSSL and Inno Setup
+        run: choco install openssl innosetup -y --no-progress
+
+      - name: Build
+        run: powershell -ExecutionPolicy Bypass -File scripts\build.ps1
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '0.0.0-dev' }
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          $crt = Get-ChildItem "$vs\VC\Redist\MSVC\*\x64\Microsoft.VC14*.CRT" -Directory | Sort-Object FullName | Select-Object -Last 1
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DCrtDir=$($crt.FullName)" "/DMyAppVersion=$version" scripts\airscreen.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Get-FileHash out\installer\*.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } | Set-Content out\installer\SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AirScreen-installer
+          path: out/installer/*
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" out/installer/* --generate-notes

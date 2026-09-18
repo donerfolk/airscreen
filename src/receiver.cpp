@@ -282,7 +282,7 @@ void Receiver::apply_features() {
     dnssd_set_airplay_features(ds, 29, 0);
     dnssd_set_airplay_features(ds, 30, 1);
     dnssd_set_airplay_features(ds, 31, 0);
-    dnssd_set_airplay_features(ds, 42, 0); // h265 off — h264 only for MVP
+    dnssd_set_airplay_features(ds, 42, 0); // h265 off, h264 only for MVP
 }
 
 bool Receiver::start_raop() {
@@ -359,7 +359,7 @@ bool Receiver::start_raop() {
     int e1 = dnssd_register_raop((dnssd_t *) dnssd_, port);
     int e2 = dnssd_register_airplay((dnssd_t *) dnssd_, port);
     if (e1 || e2) {
-        on_log(LOGGER_ERR, "mDNS register failed — check firewall / another AirPlay receiver");
+        on_log(LOGGER_ERR, "mDNS register failed, check firewall / another AirPlay receiver");
         return false;
     }
     char buf[64];

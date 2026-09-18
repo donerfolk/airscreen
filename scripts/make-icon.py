@@ -1,4 +1,4 @@
-"""Generate AirScreen app.ico — a monitor on a stand casting Continuity-blue AirPlay arcs."""
+"""Generate AirScreen app.ico: a monitor on a stand casting Continuity-blue AirPlay arcs."""
 from __future__ import annotations
 
 import math

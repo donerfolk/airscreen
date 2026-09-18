@@ -37,6 +37,8 @@ AirScreen is tested with iPhone. iPad and Mac use the same protocol and may work
 
 Download the latest installer from [Releases](https://github.com/donerfolk/airscreen/releases), or [build from source](#building-from-source).
 
+Every release is built from this repository by [GitHub Actions](https://github.com/donerfolk/airscreen/actions), with SHA-256 checksums in `SHA256SUMS.txt`.
+
 The installer isn't code-signed yet, so Windows SmartScreen may show "Windows protected your PC". Click **More info → Run anyway**.
 
 ## Usage
