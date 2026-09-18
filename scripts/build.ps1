@@ -38,5 +38,7 @@ if ($openssl) {
 
 Write-Host "Configuring: $cmake $($args -join ' ')"
 & $cmake @args
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
 & $cmake --build "$root\build" --config Release
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
 Write-Host "Built: $root\build\Release\AirScreen.exe"

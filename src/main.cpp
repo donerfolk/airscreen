@@ -435,7 +435,7 @@ void paint_gear(HWND hwnd, HDC hdc, bool hot) {
     FillRect(mem, &rc, b);
     DeleteObject(b);
 
-    // Hairline rim — glass edge, brighter on hover.
+    // Hairline rim: glass edge, brighter on hover.
     HPEN rim = CreatePen(PS_SOLID, 1, hot ? RGB(120, 120, 124) : RGB(96, 96, 100));
     HGDIOBJ old_pen = SelectObject(mem, rim);
     HGDIOBJ old_br = SelectObject(mem, GetStockObject(NULL_BRUSH));
@@ -669,7 +669,7 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
             app->overlay_pin.clear();
             app->overlay_status = L"Connected";
             if (!msg.empty()) {
-                app->overlay_status = L"Connected — " + app->utf16(msg);
+                app->overlay_status = L"Connected: " + app->utf16(msg);
             }
             update_title(app);
             InvalidateRect(hwnd, nullptr, FALSE);
@@ -692,7 +692,7 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         case airscreen::UiEvent::VideoSize:
         case airscreen::UiEvent::ClientName:
             if (ev == airscreen::UiEvent::ClientName && !msg.empty()) {
-                app->overlay_status = L"Connected — " + app->utf16(msg);
+                app->overlay_status = L"Connected: " + app->utf16(msg);
                 update_title(app);
             }
             break;
@@ -940,7 +940,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdline, int show) {
     InvalidateRect(app.hwnd, nullptr, FALSE);
     if (!app.receiver.start(app.video_hwnd, app.settings, ui)) {
         app.start_failed = true;
-        app.overlay_status = L"Could not start — check the log from Settings";
+        app.overlay_status = L"Could not start. Check the log from Settings";
         InvalidateRect(app.hwnd, nullptr, FALSE);
         MessageBoxW(app.hwnd,
                     L"Could not start the AirPlay receiver.\n\nAllow AirScreen through the firewall (tray menu) and check %APPDATA%\\AirScreen\\airscreen.log",
