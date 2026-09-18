@@ -32,6 +32,7 @@ constexpr UINT kTimerDisconnect = 2;
 constexpr UINT kTimerDrift = 3;
 constexpr UINT kOverlayHideMs = 2200;
 constexpr UINT kDisconnectMs = 400;
+UINT g_taskbar_created = 0;
 
 struct NameDlgState {
     std::wstring initial;
@@ -197,8 +198,22 @@ void toggle_fullscreen(App *app) {
     set_fullscreen(app, !app->fullscreen);
 }
 
+void set_boost(bool on) {
+    static bool boosted = false;
+    if (on == boosted) {
+        return;
+    }
+    boosted = on;
+    SetPriorityClass(GetCurrentProcess(), on ? HIGH_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS);
+    on ? timeBeginPeriod(1) : timeEndPeriod(1);
+}
+
 void show_video_surface(App *app) {
+    set_boost(true);
     app->mirroring = true;
+    if (!IsWindowVisible(app->hwnd)) {
+        ShowWindow(app->hwnd, SW_SHOWNORMAL); // someone started mirroring while we sat in the tray
+    }
     if (app->video_hwnd) {
         ShowWindow(app->video_hwnd, SW_SHOW);
     }
@@ -207,6 +222,7 @@ void show_video_surface(App *app) {
 }
 
 void return_to_menu(App *app) {
+    set_boost(false);
     app->connected = false;
     app->mirroring = false;
     app->overlay_status = L"Waiting for iPhone";
@@ -263,6 +279,7 @@ void do_rename(App *app) {
         WideCharToMultiByte(CP_UTF8, 0, st.result.c_str(), (int) st.result.size(), name.data(), n, nullptr, nullptr);
         if (app->receiver.rename(name)) {
             app->settings.name = name;
+            airscreen::save_settings(app->settings);
             update_title(app);
         }
     }
@@ -279,6 +296,8 @@ void popup_settings_menu(App *app, POINT screen_pt, bool tray) {
     AppendMenuW(m, MF_STRING | (app->fullscreen ? MF_CHECKED : 0), IDM_TRAY_FULL, L"Fullscreen");
     AppendMenuW(m, MF_STRING | (app->settings.fill_screen ? MF_CHECKED : 0), IDM_TRAY_FILL,
                 L"Fill screen (no black bars)");
+    AppendMenuW(m, MF_STRING | (airscreen::start_with_windows() ? MF_CHECKED : 0), IDM_TRAY_STARTUP,
+                L"Start with Windows");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(m, MF_STRING, IDM_TRAY_FIREWALL, L"Allow through firewall");
     AppendMenuW(m, MF_STRING, IDM_TRAY_LOG, L"Open log file");
@@ -338,6 +357,7 @@ void handle_tray_cmd(App *app, UINT id) {
     case IDM_TRAY_PIN:
         app->settings.require_pin = !app->settings.require_pin;
         app->receiver.set_require_pin(app->settings.require_pin);
+        airscreen::save_settings(app->settings);
         break;
     case IDM_TRAY_FULL:
         toggle_fullscreen(app);
@@ -346,6 +366,9 @@ void handle_tray_cmd(App *app, UINT id) {
         app->settings.fill_screen = !app->settings.fill_screen;
         airscreen::save_settings(app->settings);
         apply_video_fill(app);
+        break;
+    case IDM_TRAY_STARTUP:
+        airscreen::set_start_with_windows(!airscreen::start_with_windows());
         break;
     case IDM_TRAY_FIREWALL:
         if (!airscreen::ensure_firewall_rule()) {
@@ -641,6 +664,7 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         switch (ev) {
         case airscreen::UiEvent::Connected:
             KillTimer(hwnd, kTimerDisconnect);
+            set_boost(true);
             app->connected = true;
             app->overlay_pin.clear();
             app->overlay_status = L"Connected";
@@ -710,6 +734,11 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         return 0;
     }
     }
+    if (msg == g_taskbar_created && app) {
+        Shell_NotifyIconW(NIM_ADD, &app->nid);
+        Shell_NotifyIconW(NIM_SETVERSION, &app->nid);
+        return 0;
+    }
     return DefWindowProcW(hwnd, msg, wparam, lparam);
 }
 
@@ -751,7 +780,7 @@ bool activate_existing() {
 
 } // namespace
 
-int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
+int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdline, int show) {
     SetUnhandledExceptionFilter(crash_filter);
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
@@ -768,7 +797,10 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     ULONG_PTR gdip = airscreen::gdiplus_startup();
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     (void) hr;
+    airscreen::rotate_log();
     airscreen::append_log("AirScreen starting");
+    g_taskbar_created = RegisterWindowMessageW(L"TaskbarCreated");
+    bool start_in_tray = wcsstr(cmdline, L"--tray") != nullptr;
 
     App app;
     g_app = &app;
@@ -821,7 +853,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     }
 
     app.hwnd = CreateWindowExW(WS_EX_APPWINDOW, wc.lpszClassName, L"AirScreen",
-                               WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 1100, 720,
+                               WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 1100, 720,
                                nullptr, nullptr, inst, nullptr);
     if (!app.hwnd) {
         airscreen::append_log("CreateWindowEx failed");
@@ -838,9 +870,11 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     layout_chrome(&app);
 
     (void) show;
-    ShowWindow(app.hwnd, SW_SHOWNORMAL);
-    UpdateWindow(app.hwnd);
-    SetForegroundWindow(app.hwnd);
+    if (!start_in_tray) {
+        ShowWindow(app.hwnd, SW_SHOWNORMAL);
+        UpdateWindow(app.hwnd);
+        SetForegroundWindow(app.hwnd);
+    }
 
     app.nid.cbSize = sizeof(app.nid);
     app.nid.hWnd = app.hwnd;
@@ -854,8 +888,6 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     Shell_NotifyIconW(NIM_SETVERSION, &app.nid);
     SetTimer(app.hwnd, kTimerDrift, 100, nullptr); // the field drifts over minutes; 10 fps is plenty
 
-    timeBeginPeriod(1);
-    SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 #ifdef PROCESS_POWER_THROTTLING_CURRENT_VERSION
     PROCESS_POWER_THROTTLING_STATE pt = {};
@@ -895,7 +927,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     }
     CoUninitialize();
     airscreen::gdiplus_shutdown(gdip);
-    timeEndPeriod(1);
+    set_boost(false);
     if (instance) {
         CloseHandle(instance);
     }
