@@ -19,11 +19,12 @@ AirScreen turns a Windows PC into an AirPlay receiver. Your iPhone lists it unde
 ## Features
 
 - Shows up as a Screen Mirroring target, no app needed on the iPhone
-- Hardware-accelerated H.264 and HEVC decoding (Direct3D 11)
+- Hardware-accelerated H.264 decoding (Direct3D 11)
 - Audio plays through your default Windows output device
 - Rename the receiver, require a pairing PIN, keep the window on top, fill the screen or letterbox
 - Light and dark idle screen
 - Runs from the system tray; closing the window keeps the receiver available
+- Optional Start with Windows, so the PC is always ready to mirror to
 
 ## Requirements
 

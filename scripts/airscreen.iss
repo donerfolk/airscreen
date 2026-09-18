@@ -1,7 +1,9 @@
 ; AirScreen installer (Inno Setup 6)
 ; iscc /DCrtDir=<VS>\VC\Redist\MSVC\<ver>\x64\Microsoft.VC143.CRT scripts\airscreen.iss
 #define MyAppName "AirScreen"
-#define MyAppVersion "1.0.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0.0"
+#endif
 #define MyAppPublisher "AirScreen"
 #define MyAppURL "https://github.com/donerfolk/airscreen"
 #define MyAppExeName "AirScreen.exe"
@@ -60,6 +62,7 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Name: "firewall"; Description: "Allow AirScreen through Windows Firewall"; GroupDescription: "Network:"
 
 [Run]
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""AirScreen"""; Flags: runhidden; Tasks: firewall
 Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""AirScreen"" dir=in action=allow program=""{app}\{#MyAppExeName}"" enable=yes profile=any"; Flags: runhidden; Tasks: firewall
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch AirScreen"; Flags: nowait postinstall skipifsilent
 

@@ -712,8 +712,30 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         return 0;
     case WM_CLOSE:
         ShowWindow(hwnd, SW_HIDE);
+        if (app && !app->settings.tray_tip_shown) {
+            app->settings.tray_tip_shown = true;
+            airscreen::save_settings(app->settings);
+            NOTIFYICONDATAW tip = app->nid;
+            tip.uFlags = NIF_INFO;
+            tip.dwInfoFlags = NIIF_NONE;
+            wcscpy_s(tip.szInfoTitle, L"AirScreen is still running");
+            wcscpy_s(tip.szInfo, L"Your iPhone can still mirror here. Right-click the tray icon to exit.");
+            Shell_NotifyIconW(NIM_MODIFY, &tip);
+        }
         return 0;
     case WM_DESTROY: {
+        if (app->fullscreen) {
+            set_fullscreen(app, false);
+        }
+        WINDOWPLACEMENT wp = {sizeof(wp)};
+        if (GetWindowPlacement(hwnd, &wp)) {
+            RECT r = wp.rcNormalPosition;
+            app->settings.win_x = r.left;
+            app->settings.win_y = r.top;
+            app->settings.win_w = r.right - r.left;
+            app->settings.win_h = r.bottom - r.top;
+            airscreen::save_settings(app->settings);
+        }
         KillTimer(hwnd, kTimerDrift);
         KillTimer(hwnd, kTimerOverlay);
         KillTimer(hwnd, kTimerDisconnect);
@@ -864,6 +886,15 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdline, int show) {
                                      nullptr, inst, nullptr);
     app.settings_hwnd = CreateWindowExW(0, L"AirScreenGear", L"Settings", WS_CHILD | WS_CLIPSIBLINGS, 0, 0, 40, 40,
                                         app.hwnd, (HMENU)(INT_PTR) IDC_SETTINGS, inst, nullptr);
+    RECT saved = {app.settings.win_x, app.settings.win_y, app.settings.win_x + app.settings.win_w,
+                  app.settings.win_y + app.settings.win_h};
+    if (app.settings.win_w > 0 && app.settings.win_h > 0 && MonitorFromRect(&saved, MONITOR_DEFAULTTONULL)) {
+        WINDOWPLACEMENT wp = {sizeof(wp)};
+        GetWindowPlacement(app.hwnd, &wp);
+        wp.rcNormalPosition = saved;
+        wp.showCmd = SW_HIDE;
+        SetWindowPlacement(app.hwnd, &wp);
+    }
     set_dark_title(app.hwnd);
     apply_topmost(app.hwnd, app.settings.always_on_top);
     update_title(&app);
