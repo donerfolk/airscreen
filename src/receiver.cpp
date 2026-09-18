@@ -213,7 +213,6 @@ bool Receiver::rename(const std::string &name) {
     }
     name_ = name;
     settings_.name = name;
-    save_settings(settings_);
     if (dnssd_) {
         dnssd_unregister_raop((dnssd_t *) dnssd_);
         dnssd_unregister_airplay((dnssd_t *) dnssd_);
@@ -234,7 +233,6 @@ bool Receiver::rename(const std::string &name) {
 bool Receiver::set_require_pin(bool on) {
     settings_.require_pin = on;
     pin_pw_ = on ? 1 : 0;
-    save_settings(settings_);
     return rename(name_);
 }
 

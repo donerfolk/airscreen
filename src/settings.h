@@ -27,6 +27,10 @@ std::string log_path();
 Settings load_settings();
 void save_settings(const Settings &s);
 void append_log(const char *msg);
+void rotate_log();
+
+bool start_with_windows();
+void set_start_with_windows(bool on);
 
 std::string find_mac_address();
 std::string random_mac_address();

@@ -18,6 +18,7 @@
 
 #pragma comment(lib, "iphlpapi.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "advapi32.lib")
 
 namespace airscreen {
 namespace {
@@ -67,6 +68,33 @@ std::string log_path() {
     return app_data_dir_utf8() + "\\airscreen.log";
 }
 
+void rotate_log() {
+    std::wstring path = app_data_dir() + L"\\airscreen.log";
+    WIN32_FILE_ATTRIBUTE_DATA fad = {};
+    if (GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &fad) && (fad.nFileSizeHigh || fad.nFileSizeLow > 2000000)) {
+        MoveFileExW(path.c_str(), (path + L".old").c_str(), MOVEFILE_REPLACE_EXISTING);
+    }
+}
+
+const wchar_t *kRunKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+
+bool start_with_windows() {
+    return RegGetValueW(HKEY_CURRENT_USER, kRunKey, L"AirScreen", RRF_RT_REG_SZ, nullptr, nullptr, nullptr) ==
+           ERROR_SUCCESS;
+}
+
+void set_start_with_windows(bool on) {
+    if (!on) {
+        RegDeleteKeyValueW(HKEY_CURRENT_USER, kRunKey, L"AirScreen");
+        return;
+    }
+    wchar_t exe[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exe, MAX_PATH);
+    std::wstring cmd = L"\"" + std::wstring(exe) + L"\" --tray";
+    RegSetKeyValueW(HKEY_CURRENT_USER, kRunKey, L"AirScreen", REG_SZ, cmd.c_str(),
+                    (DWORD) ((cmd.size() + 1) * sizeof(wchar_t)));
+}
+
 void append_log(const char *msg) {
     if (!msg) {
         return;
@@ -103,11 +131,11 @@ Settings load_settings() {
         } else if (key == "DarkMode") {
             s.dark_mode = (val == "1" || val == "true");
         } else if (key == "Width") {
-            s.width = std::stoi(val);
+            s.width = atoi(val.c_str()) > 0 ? atoi(val.c_str()) : s.width;
         } else if (key == "Height") {
-            s.height = std::stoi(val);
+            s.height = atoi(val.c_str()) > 0 ? atoi(val.c_str()) : s.height;
         } else if (key == "MaxFps") {
-            s.max_fps = std::stoi(val);
+            s.max_fps = atoi(val.c_str()) > 0 ? atoi(val.c_str()) : s.max_fps;
         }
     }
     return s;

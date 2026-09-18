@@ -14,3 +14,4 @@
 #define IDM_TRAY_EXIT       40008
 #define IDM_TRAY_FILL       40009
 #define IDC_SETTINGS        40010
+#define IDM_TRAY_STARTUP    40011
