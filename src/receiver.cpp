@@ -191,16 +191,17 @@ bool Receiver::start(HWND hwnd, const Settings &settings, UiFn ui) {
 
 void Receiver::stop() {
     open_conns_ = 0;
-    if (raop_) {
-        raop_stop_httpd((raop_t *) raop_);
-        raop_destroy((raop_t *) raop_);
-        raop_ = nullptr;
-    }
+    // Goodbye first: raop_destroy calls WSACleanup, after which the mDNS goodbye can't be sent.
     if (dnssd_) {
         dnssd_unregister_raop((dnssd_t *) dnssd_);
         dnssd_unregister_airplay((dnssd_t *) dnssd_);
         dnssd_destroy((dnssd_t *) dnssd_);
         dnssd_ = nullptr;
+    }
+    if (raop_) {
+        raop_stop_httpd((raop_t *) raop_);
+        raop_destroy((raop_t *) raop_);
+        raop_ = nullptr;
     }
     audio_.stop();
     video_.shutdown();
