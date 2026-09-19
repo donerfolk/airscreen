@@ -710,19 +710,6 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     case WM_COMMAND:
         handle_tray_cmd(app, LOWORD(wparam));
         return 0;
-    case WM_CLOSE:
-        ShowWindow(hwnd, SW_HIDE);
-        if (app && !app->settings.tray_tip_shown) {
-            app->settings.tray_tip_shown = true;
-            airscreen::save_settings(app->settings);
-            NOTIFYICONDATAW tip = app->nid;
-            tip.uFlags = NIF_INFO;
-            tip.dwInfoFlags = NIIF_NONE;
-            wcscpy_s(tip.szInfoTitle, L"AirScreen is still running");
-            wcscpy_s(tip.szInfo, L"Your iPhone can still mirror here. Right-click the tray icon to exit.");
-            Shell_NotifyIconW(NIM_MODIFY, &tip);
-        }
-        return 0;
     case WM_DESTROY: {
         if (app->fullscreen) {
             set_fullscreen(app, false);

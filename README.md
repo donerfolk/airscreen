@@ -23,8 +23,8 @@ AirScreen turns a Windows PC into an AirPlay receiver. Your iPhone lists it unde
 - Audio plays through your default Windows output device
 - Rename the receiver, require a pairing PIN, keep the window on top, fill the screen or letterbox
 - Light and dark idle screen
-- Runs from the system tray; closing the window keeps the receiver available
-- Optional Start with Windows, so the PC is always ready to mirror to
+- Closing the window quits AirScreen; settings are also in the tray icon menu
+- Optional Start with Windows: waits in the system tray, ready to mirror to
 
 ## Requirements
 
@@ -47,7 +47,7 @@ The installer isn't code-signed yet, so Windows SmartScreen may show "Windows pr
 2. On your iPhone, open **Control Center → Screen Mirroring** and pick **AirScreen**.
 3. If a PIN appears on the PC, enter it on the iPhone.
 
-To stop, end mirroring on the iPhone. Right-click the tray icon for settings or to exit.
+To stop, end mirroring on the iPhone. Close the window to quit AirScreen. Right-click the window or the tray icon for settings.
 
 ## Troubleshooting
 

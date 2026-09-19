@@ -138,8 +138,6 @@ Settings load_settings() {
             s.max_fps = atoi(val.c_str()) > 0 ? atoi(val.c_str()) : s.max_fps;
         } else if (key == "Window") {
             sscanf(val.c_str(), "%d,%d,%d,%d", &s.win_x, &s.win_y, &s.win_w, &s.win_h);
-        } else if (key == "TrayTipShown") {
-            s.tray_tip_shown = (val == "1");
         }
     }
     return s;
@@ -157,7 +155,6 @@ void save_settings(const Settings &s) {
     out << "Height=" << s.height << "\n";
     out << "MaxFps=" << s.max_fps << "\n";
     out << "Window=" << s.win_x << "," << s.win_y << "," << s.win_w << "," << s.win_h << "\n";
-    out << "TrayTipShown=" << (s.tray_tip_shown ? 1 : 0) << "\n";
 }
 
 std::string find_mac_address() {

@@ -17,7 +17,6 @@ struct Settings {
     int refresh_hz = 60;
     int max_fps = 60;
     int win_x = 0, win_y = 0, win_w = 0, win_h = 0; // 0 size = default placement
-    bool tray_tip_shown = false;
 };
 
 std::wstring app_data_dir();
