@@ -17,7 +17,6 @@ if (-not $cmake) {
 }
 
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-$generator = "Visual Studio 17 2022"
 if (Test-Path $vswhere) {
     $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
     if (-not $vs) {
@@ -31,7 +30,7 @@ $openssl = @(
     "C:\OpenSSL-Win64"
 ) | Where-Object { Test-Path "$_\include\openssl\ssl.h" } | Select-Object -First 1
 
-$args = @("-S", $root, "-B", "$root\build", "-G", $generator, "-A", "x64")
+$args = @("-S", $root, "-B", "$root\build", "-A", "x64")
 if ($openssl) {
     $args += "-DOPENSSL_ROOT_DIR=$openssl"
 }
