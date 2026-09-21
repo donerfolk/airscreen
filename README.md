@@ -2,10 +2,10 @@
   <img src="src/app/logo.png" width="96" alt="AirScreen logo">
 </p>
 
-<h1 align="center">AirScreen</h1>
+<h1 align="center">AirScreen: Free AirPlay Receiver for Windows</h1>
 
 <p align="center">
-  Mirror your iPhone to a Windows PC over AirPlay. Free and open source.
+  Mirror your iPhone to a Windows PC over AirPlay. No Apple TV, no cables, no app to install on the iPhone. Free and open source.
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
 
 ---
 
-AirScreen turns a Windows PC into an AirPlay receiver. Your iPhone lists it under **Control Center → Screen Mirroring**, just like an Apple TV. Video and audio play in a resizable window or full screen.
+AirScreen turns a Windows PC into a wireless AirPlay receiver. Your iPhone lists it under **Control Center → Screen Mirroring**, just like an Apple TV, without needing one. Video and audio play in a resizable window or full screen, with no app to install on the iPhone.
 
 ## Features
 
@@ -29,6 +29,7 @@ AirScreen turns a Windows PC into an AirPlay receiver. Your iPhone lists it unde
 ## Requirements
 
 - Windows 10 or 11, 64-bit
+- iOS 9.3 or later. Earlier versions speak an older AirPlay protocol that AirScreen doesn't implement, so they won't see the PC at all.
 - iPhone and PC on the same network. Guest networks and routers with client isolation will hide the PC.
 
 AirScreen is tested with iPhone. iPad and Mac use the same protocol and may work, but are untested.
@@ -89,6 +90,18 @@ To build an installer, run [Inno Setup](https://jrsoftware.org/isinfo.php)'s `is
 | `src/settings.cpp` | Settings file, firewall rule, log |
 | `third_party/uxplay` | AirPlay protocol stack (RAOP, mirroring, mDNS) |
 | `third_party/libplist` | Property list parsing |
+
+## FAQ
+
+**Is AirScreen free?** Yes, completely free and open source (GPL-3.0).
+
+**Do I need an Apple TV?** No. AirScreen replaces an Apple TV for screen mirroring to your Windows PC.
+
+**Do I need to install anything on my iPhone?** No. Use the built-in Screen Mirroring in Control Center. AirScreen shows up automatically on the same Wi-Fi network.
+
+**Does it work with iPad or Mac?** iPad and Mac use the same AirPlay protocol and generally work, though they are untested.
+
+**Does it work wirelessly?** Yes, entirely over Wi-Fi. Both devices must be on the same network (not a guest network).
 
 ## Credits
 
