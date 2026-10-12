@@ -9,6 +9,10 @@
 </p>
 
 <p align="center">
+<a href="https://diestro.dev/tools/airscreen/"><strong>Setup guide and download: diestro.dev/tools/airscreen</strong></a>
+</p>
+
+<p align="center">
   <a href="https://buymeacoffee.com/donerfolk"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="40" alt="Buy Me A Coffee"></a>
 </p>
 
