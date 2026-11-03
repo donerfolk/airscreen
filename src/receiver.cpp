@@ -161,6 +161,7 @@ bool Receiver::start(HWND hwnd, const Settings &settings, UiFn ui) {
     }
     parse_mac(mac_, hw_bytes_);
     ntp_global_init();
+    video_.set_playback_clock([this] { return audio_.playback_time_ns(); });
     on_log(LOGGER_INFO, "starting D3D11");
     if (!video_.init(hwnd_)) {
         on_log(LOGGER_ERR, "D3D11 init failed");

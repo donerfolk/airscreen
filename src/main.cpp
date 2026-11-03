@@ -34,6 +34,21 @@ constexpr UINT kOverlayHideMs = 2200;
 constexpr UINT kDisconnectMs = 400;
 UINT g_taskbar_created = 0;
 
+struct VideoQuality {
+    UINT command;
+    int width;
+    int height;
+    int max_fps;
+    const wchar_t *label;
+};
+
+constexpr VideoQuality kVideoQualities[] = {
+    {IDM_QUALITY_1080_60, 1920, 1080, 60, L"1080p · 60 FPS"},
+    {IDM_QUALITY_1080_30, 1920, 1080, 30, L"1080p · 30 FPS"},
+    {IDM_QUALITY_1080_24, 1920, 1080, 24, L"1080p · 24 FPS"},
+    {IDM_QUALITY_720_30, 1280, 720, 30, L"720p · 30 FPS (Smooth)"},
+};
+
 struct NameDlgState {
     std::wstring initial;
     std::wstring result;
@@ -285,12 +300,38 @@ void do_rename(App *app) {
     }
 }
 
+void start_receiver(App *app) {
+    auto ui = [app](airscreen::UiEvent ev, const std::string &msg) { app->post_ui(ev, msg); };
+    app->overlay_status = L"Starting AirPlay…";
+    InvalidateRect(app->hwnd, nullptr, FALSE);
+    app->start_failed = !app->receiver.start(app->video_hwnd, app->settings, ui);
+    if (app->start_failed) {
+        app->overlay_status = L"Could not start. Check the log from Settings";
+        InvalidateRect(app->hwnd, nullptr, FALSE);
+        MessageBoxW(app->hwnd,
+                    L"Could not start the AirPlay receiver.\n\nAllow AirScreen through the firewall (tray menu) and check %APPDATA%\\AirScreen\\airscreen.log",
+                    L"AirScreen", MB_OK | MB_ICONERROR);
+    } else {
+        app->overlay_status = L"Waiting for iPhone";
+        apply_video_fill(app);
+        InvalidateRect(app->hwnd, nullptr, FALSE);
+    }
+}
+
 void popup_settings_menu(App *app, POINT screen_pt, bool tray) {
     HMENU m = CreatePopupMenu();
     if (tray) {
         AppendMenuW(m, MF_STRING, IDM_TRAY_SHOW, L"Show AirScreen");
     }
     AppendMenuW(m, MF_STRING, IDM_TRAY_RENAME, L"Rename receiver…");
+    HMENU quality = CreatePopupMenu();
+    for (const auto &preset : kVideoQualities) {
+        UINT flags = MF_STRING;
+        if (app->settings.width == preset.width && app->settings.height == preset.height &&
+            app->settings.max_fps == preset.max_fps) flags |= MF_CHECKED;
+        AppendMenuW(quality, flags, preset.command, preset.label);
+    }
+    AppendMenuW(m, MF_POPUP, (UINT_PTR) quality, L"Streaming quality");
     AppendMenuW(m, MF_STRING | (app->settings.always_on_top ? MF_CHECKED : 0), IDM_TRAY_TOP, L"Always on top");
     AppendMenuW(m, MF_STRING | (app->settings.require_pin ? MF_CHECKED : 0), IDM_TRAY_PIN, L"Require pairing PIN");
     AppendMenuW(m, MF_STRING | (app->fullscreen ? MF_CHECKED : 0), IDM_TRAY_FULL, L"Fullscreen");
@@ -339,6 +380,22 @@ void paint_idle(App *app, HDC hdc, RECT rc) {
 }
 
 void handle_tray_cmd(App *app, UINT id) {
+    for (const auto &preset : kVideoQualities) {
+        if (preset.command != id) continue;
+        if (app->settings.width == preset.width && app->settings.height == preset.height &&
+            app->settings.max_fps == preset.max_fps) return;
+        bool reconnect = app->connected;
+        app->settings.width = preset.width;
+        app->settings.height = preset.height;
+        app->settings.max_fps = preset.max_fps;
+        airscreen::save_settings(app->settings);
+        start_receiver(app);
+        if (reconnect && !app->start_failed) {
+            MessageBoxW(app->hwnd, L"Streaming quality changed. Reconnect your iPhone to continue mirroring.",
+                        L"AirScreen", MB_OK | MB_ICONINFORMATION);
+        }
+        return;
+    }
     switch (id) {
     case IDM_TRAY_SHOW:
         ShowWindow(app->hwnd, SW_RESTORE);
@@ -921,22 +978,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR cmdline, int show) {
         DispatchMessageW(&pump);
     }
 
-    auto ui = [&app](airscreen::UiEvent ev, const std::string &msg) { app.post_ui(ev, msg); };
-    ntp_global_init();
-    app.overlay_status = L"Starting AirPlay…";
-    InvalidateRect(app.hwnd, nullptr, FALSE);
-    if (!app.receiver.start(app.video_hwnd, app.settings, ui)) {
-        app.start_failed = true;
-        app.overlay_status = L"Could not start. Check the log from Settings";
-        InvalidateRect(app.hwnd, nullptr, FALSE);
-        MessageBoxW(app.hwnd,
-                    L"Could not start the AirPlay receiver.\n\nAllow AirScreen through the firewall (tray menu) and check %APPDATA%\\AirScreen\\airscreen.log",
-                    L"AirScreen", MB_OK | MB_ICONERROR);
-    } else {
-        app.overlay_status = L"Waiting for iPhone";
-        apply_video_fill(&app);
-        InvalidateRect(app.hwnd, nullptr, FALSE);
-    }
+    start_receiver(&app);
 
     MSG msg;
     while (GetMessageW(&msg, nullptr, 0, 0)) {

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(AirScreen VERSION 1.0.0 LANGUAGES C CXX)
+project(AirScreen VERSION 1.2.0 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -189,4 +189,11 @@ endif()
 install(TARGETS AirScreen RUNTIME DESTINATION .)
 if (FFMPEG_BIN_DIR)
     install(DIRECTORY "${FFMPEG_BIN_DIR}/" DESTINATION . FILES_MATCHING PATTERN "*.dll")
+endif()
+
+include(CTest)
+if (BUILD_TESTING)
+    add_executable(MediaTimingTests tests/media_timing_test.cpp)
+    target_include_directories(MediaTimingTests PRIVATE src)
+    add_test(NAME MediaTiming COMMAND MediaTimingTests)
 endif()

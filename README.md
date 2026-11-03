@@ -54,6 +54,8 @@ The installer isn't code-signed yet, so Windows SmartScreen may show "Windows pr
 
 To stop, end mirroring on the iPhone. Close the window to quit AirScreen. Right-click the window or the tray icon for settings.
 
+**Streaming quality** defaults to 1080p at 30 FPS and also offers 1080p at 60 or 24 FPS, and 720p at 30 FPS (Smooth). Saved quality settings are preserved. Lower settings request a smaller stream from the iPhone, reducing network and decoding load. Changing quality restarts the receiver; reconnect the iPhone afterward. The iPhone chooses the actual stream dimensions and frame rate. For persistent playback delay, try 720p at 30 FPS before reducing audio buffering.
+
 ## Troubleshooting
 
 **AirScreen doesn't appear on the iPhone**
@@ -62,7 +64,7 @@ To stop, end mirroring on the iPhone. Close the window to quit AirScreen. Right-
 - Turn off any VPN on the PC or the iPhone.
 - Right-click the tray icon → **Allow through firewall**.
 
-**Stuttering or delay.** Use 5 GHz Wi-Fi or connect the PC by Ethernet. Other devices streaming on the same network can add delay.
+**Stuttering or delay.** Use 5 GHz Wi-Fi or connect the PC by Ethernet. Other devices streaming on the same network can add delay. Decoding and presentation run independently; overdue decoded frames are skipped to follow audio playback. With no audio, the newest decoded frame is shown immediately. The log includes the decoder format and periodic video timing statistics.
 
 **No sound.** Check the default playback device in Windows sound settings. Apps that take exclusive control of the device can block AirScreen.
 
@@ -77,7 +79,7 @@ Requires Visual Studio 2022 with the *Desktop development with C++* workload.
 ```powershell
 winget install Kitware.CMake
 winget install ShiningLight.OpenSSL.Dev
-powershell -ExecutionPolicy Bypass -File scripts\build.ps1
+pwsh -File scripts\build.ps1
 ```
 
 `build.ps1` downloads FFmpeg into `third_party\prebuilt`, configures CMake and builds `build\Release\AirScreen.exe` with the required DLLs next to it. OpenSSL is found through `OPENSSL_ROOT_DIR`, the Shining Light install location, or vcpkg.

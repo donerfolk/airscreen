@@ -17,6 +17,8 @@
 #include <cmath>
 #include <cstdio>
 #include <mutex>
+#include <chrono>
+#include <algorithm>
 
 #pragma comment(lib, "avrt.lib")
 
@@ -120,11 +122,17 @@ bool VideoPipeline::init(HWND hwnd) {
 void VideoPipeline::stop_worker() {
     worker_run_ = false;
     q_cv_.notify_all();
+    frame_cv_.notify_all();
     if (worker_.joinable()) {
         worker_.join();
     }
+    if (renderer_.joinable()) {
+        renderer_.join();
+    }
     std::lock_guard<std::mutex> qlock(q_mu_);
     q_.clear();
+    std::lock_guard<std::mutex> flock(frame_mu_);
+    frames_.clear();
 }
 
 void VideoPipeline::start_worker() {
@@ -133,6 +141,7 @@ void VideoPipeline::start_worker() {
     }
     worker_run_ = true;
     worker_ = std::thread([this] { decode_loop(); });
+    renderer_ = std::thread([this] { render_loop(); });
 }
 
 void VideoPipeline::shutdown() {
@@ -231,31 +240,38 @@ void VideoPipeline::resize() {
 }
 
 void VideoPipeline::flush() {
+    std::scoped_lock lock(decode_mu_, mu_);
+    ++generation_;
     {
         std::lock_guard<std::mutex> qlock(q_mu_);
         q_.clear();
     }
-    std::lock_guard<std::mutex> lock(mu_);
+    {
+        std::lock_guard<std::mutex> flock(frame_mu_);
+        frames_.clear();
+    }
     if (av_codec_) {
         avcodec_flush_buffers((AVCodecContext *) av_codec_);
     }
     q_cv_.notify_all();
+    frame_cv_.notify_all();
 }
 
 void VideoPipeline::clear() {
-    {
-        std::lock_guard<std::mutex> qlock(q_mu_);
-        q_.clear();
-    }
+    flush();
     std::lock_guard<std::mutex> lock(mu_);
     has_frame_ = false;
     if (rtv_ && ctx_ && swapchain_) {
         float black[4] = {0.07f, 0.08f, 0.10f, 1};
         ctx_->OMSetRenderTargets(1, &rtv_, nullptr);
         ctx_->ClearRenderTargetView(rtv_, black);
-        swapchain_->Present(0, tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0);
+        swapchain_->Present(0, DXGI_PRESENT_DO_NOT_WAIT | (tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0));
     }
-    q_cv_.notify_all();
+}
+
+void VideoPipeline::set_playback_clock(std::function<int64_t()> fn) {
+    std::lock_guard<std::mutex> lock(mu_);
+    playback_clock_ = std::move(fn);
 }
 
 void VideoPipeline::set_cover(bool cover) {
@@ -273,7 +289,7 @@ void VideoPipeline::set_source_size(int width, int height) {
 }
 
 bool VideoPipeline::create_device() {
-    UINT flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+    UINT flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
 #ifdef _DEBUG
     flags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
@@ -282,14 +298,14 @@ bool VideoPipeline::create_device() {
     HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flags, levels, 3,
                                    D3D11_SDK_VERSION, &device_, &got, &ctx_);
     if (FAILED(hr)) {
-        hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+        hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT,
                                levels, 3, D3D11_SDK_VERSION, &device_, &got, &ctx_);
     }
     if (FAILED(hr)) {
         return false;
     }
     ComPtr<ID3D11Multithread> mt;
-    if (SUCCEEDED(device_->QueryInterface(IID_PPV_ARGS(&mt)))) {
+    if (SUCCEEDED(ctx_->QueryInterface(IID_PPV_ARGS(&mt)))) {
         mt->SetMultithreadProtected(TRUE);
     }
     return true;
@@ -336,9 +352,12 @@ bool VideoPipeline::create_swapchain() {
     }
     factory->MakeWindowAssociation(hwnd_, DXGI_MWA_NO_ALT_ENTER);
 
-    ComPtr<IDXGISwapChain2> sc2;
-    if (SUCCEEDED(swapchain_->QueryInterface(IID_PPV_ARGS(&sc2)))) {
-        sc2->SetMaximumFrameLatency(1);
+    ComPtr<IDXGIDevice1> dxgi_dev1;
+    if (SUCCEEDED(dxgi_dev.As(&dxgi_dev1))) {
+        hr = dxgi_dev1->SetMaximumFrameLatency(1);
+        if (FAILED(hr)) {
+            return false;
+        }
     }
 
     ID3D11Texture2D *back = nullptr;
@@ -480,9 +499,11 @@ bool VideoPipeline::decode_init(bool hevc) {
     AVCodecContext *ctx = avcodec_alloc_context3(codec);
     ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
     ctx->flags2 |= AV_CODEC_FLAG2_FAST | AV_CODEC_FLAG2_SHOW_ALL;
-    ctx->thread_count = 1;
-    ctx->pkt_timebase = AVRational{1, 1000000};
-    ctx->extra_hw_frames = 8;
+    ctx->thread_count = 0;
+    ctx->thread_type = FF_THREAD_SLICE;
+    ctx->pkt_timebase = AVRational{1, 1000000000};
+    ctx->extra_hw_frames = (int) VideoFrameQueue::capacity + 2;
+    decoder_reported_ = false;
 
     AVBufferRef *hw = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_D3D11VA);
     if (hw) {
@@ -534,18 +555,26 @@ void VideoPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns, bool h
     if (!data || len <= 0 || !worker_run_) {
         return;
     }
+    ++received_count_;
+    received_bytes_ += (uint64_t) len;
     EncodedPacket pkt;
     pkt.data.assign(data, data + len);
     pkt.ntp_ns = ntp_ns;
+    pkt.generation = generation_.load();
     pkt.hevc = hevc;
+    auto wait_start = std::chrono::steady_clock::now();
     {
         std::unique_lock<std::mutex> qlock(q_mu_);
-        q_cv_.wait(qlock, [this] { return q_.size() < kMaxQueued || !worker_run_; });
-        if (!worker_run_) {
+        q_cv_.wait(qlock, [this, &pkt] { return q_.size() < kMaxQueued || !worker_run_ || pkt.generation != generation_.load(); });
+        if (!worker_run_ || pkt.generation != generation_.load()) {
             return;
         }
         q_.push_back(std::move(pkt));
     }
+    uint64_t wait_us = (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - wait_start).count();
+    uint64_t previous = max_submit_wait_us_.load();
+    while (previous < wait_us && !max_submit_wait_us_.compare_exchange_weak(previous, wait_us)) {}
     q_cv_.notify_all();
 }
 
@@ -568,7 +597,12 @@ void VideoPipeline::decode_loop() {
             q_.pop_front();
         }
         q_cv_.notify_all();
+        auto decode_start = std::chrono::steady_clock::now();
         decode_packet(pkt);
+        uint64_t decode_us = (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - decode_start).count();
+        uint64_t previous = max_decode_us_.load();
+        while (previous < decode_us && !max_decode_us_.compare_exchange_weak(previous, decode_us)) {}
     }
     if (mmcss) {
         AvRevertMmThreadCharacteristics(mmcss);
@@ -576,109 +610,226 @@ void VideoPipeline::decode_loop() {
 }
 
 void VideoPipeline::decode_packet(const EncodedPacket &pkt) {
-    std::lock_guard<std::mutex> lock(mu_);
-    if (!device_ || pkt.data.empty()) {
+    std::lock_guard<std::mutex> lock(decode_mu_);
+    if (!device_ || pkt.data.empty() || pkt.generation != generation_.load()) {
         return;
     }
-    const uint8_t *data = pkt.data.data();
-    int len = (int) pkt.data.size();
-    bool hevc = pkt.hevc;
-    if (!av_codec_ || hevc_ != hevc) {
-        if (!decode_init(hevc)) {
-            return;
-        }
+    if (!av_codec_ || hevc_ != pkt.hevc) {
+        if (!decode_init(pkt.hevc)) return;
     }
     auto *ctx = (AVCodecContext *) av_codec_;
     auto *avpkt = (AVPacket *) av_pkt_;
-    auto *frame = (AVFrame *) av_frame_;
     av_packet_unref(avpkt);
-    if (av_new_packet(avpkt, len) < 0) {
-        return;
-    }
-    memcpy(avpkt->data, data, (size_t) len);
+    if (av_new_packet(avpkt, (int) pkt.data.size()) < 0) return;
+    memcpy(avpkt->data, pkt.data.data(), pkt.data.size());
+    avpkt->pts = pkt.ntp_ns ? (int64_t) pkt.ntp_ns : AV_NOPTS_VALUE;
     int send = avcodec_send_packet(ctx, avpkt);
-    if (send < 0 && send != AVERROR(EAGAIN)) {
-        decode_init(hevc);
-        ctx = (AVCodecContext *) av_codec_;
-        avpkt = (AVPacket *) av_pkt_;
-        frame = (AVFrame *) av_frame_;
-        if (!ctx || av_new_packet(avpkt, len) < 0) {
-            return;
-        }
-        memcpy(avpkt->data, data, (size_t) len);
+    if (send == AVERROR(EAGAIN)) {
+        receive_frames(pkt.generation);
         send = avcodec_send_packet(ctx, avpkt);
-        if (send < 0 && send != AVERROR(EAGAIN)) {
-            char es[64];
-            av_strerror(send, es, sizeof(es));
-            char line[96];
-            snprintf(line, sizeof(line), "decode send failed: %s", es);
-            append_log(line);
-            av_packet_unref(avpkt);
-            return;
-        }
     }
     av_packet_unref(avpkt);
-    if (!ctx) {
+    if (send < 0 && send != AVERROR(EAGAIN)) {
+        char error[64];
+        av_strerror(send, error, sizeof(error));
+        char line[128];
+        snprintf(line, sizeof(line), "video decode send failed: %s", error);
+        append_log(line);
+        if (decode_init(pkt.hevc)) {
+            ctx = (AVCodecContext *) av_codec_;
+            avpkt = (AVPacket *) av_pkt_;
+            if (av_new_packet(avpkt, (int) pkt.data.size()) >= 0) {
+                memcpy(avpkt->data, pkt.data.data(), pkt.data.size());
+                avpkt->pts = pkt.ntp_ns ? (int64_t) pkt.ntp_ns : AV_NOPTS_VALUE;
+                send = avcodec_send_packet(ctx, avpkt);
+                av_packet_unref(avpkt);
+                if (send >= 0) receive_frames(pkt.generation);
+            }
+        }
         return;
     }
-    while (avcodec_receive_frame(ctx, frame) == 0) {
-        int w = frame->width & ~1;
-        int h = frame->height & ~1;
-        if (w <= 0 || h <= 0) {
-            av_frame_unref(frame);
-            continue;
+    receive_frames(pkt.generation);
+}
+
+void VideoPipeline::receive_frames(uint64_t generation) {
+    auto *ctx = (AVCodecContext *) av_codec_;
+    auto *frame = (AVFrame *) av_frame_;
+    int result;
+    while ((result = avcodec_receive_frame(ctx, frame)) == 0) {
+        ++decoded_count_;
+        if (!decoder_reported_) {
+            char line[128];
+            snprintf(line, sizeof(line), "video decoder: %s %dx%d threads=%d",
+                     av_get_pix_fmt_name((AVPixelFormat) frame->format), frame->width, frame->height, ctx->thread_count);
+            append_log(line);
+            decoder_reported_ = true;
         }
-        width_.store(w);
-        height_.store(h);
-        if (frame->format == AV_PIX_FMT_YUVJ420P || frame->color_range == AVCOL_RANGE_JPEG) {
-            if (!full_range_) {
-                full_range_ = true;
-                color_cbuf_dirty_ = true;
+        AVFrame *copy = av_frame_clone(frame);
+        if (copy) {
+            VideoFrame ready;
+            ready.data = std::shared_ptr<AVFrame>(copy, [](AVFrame *p) { av_frame_free(&p); });
+            ready.timestamp_ns = frame->pts == AV_NOPTS_VALUE ? 0 : frame->pts;
+            ready.generation = generation;
+            std::lock_guard<std::mutex> lock(frame_mu_);
+            if (generation == generation_.load()) frames_.push(std::move(ready));
+        }
+        av_frame_unref(frame);
+        frame_cv_.notify_one();
+    }
+    if (result != AVERROR(EAGAIN) && result != AVERROR_EOF) {
+        char error[64];
+        av_strerror(result, error, sizeof(error));
+        char line[128];
+        snprintf(line, sizeof(line), "video decode receive failed: %s", error);
+        append_log(line);
+    }
+}
+
+bool VideoPipeline::upload_frame(AVFrame *frame) {
+    int w = frame->width & ~1;
+    int h = frame->height & ~1;
+    if (w <= 0 || h <= 0) {
+        return false;
+    }
+    width_.store(w);
+    height_.store(h);
+    if (frame->format == AV_PIX_FMT_YUVJ420P || frame->color_range == AVCOL_RANGE_JPEG) {
+        if (!full_range_) {
+            full_range_ = true;
+            color_cbuf_dirty_ = true;
+        }
+    } else if (frame->color_range == AVCOL_RANGE_MPEG) {
+        if (full_range_) {
+            full_range_ = false;
+            color_cbuf_dirty_ = true;
+        }
+    }
+    if (!ensure_nv12(w, h)) {
+        return false;
+    }
+    if (frame->format == AV_PIX_FMT_D3D11) {
+        auto *tex = (ID3D11Texture2D *) frame->data[0];
+        intptr_t index = (intptr_t) frame->data[1];
+        if (!tex) {
+            return false;
+        }
+        D3D11_BOX box = {0, 0, 0, (UINT) w, (UINT) h, 1};
+        ctx_->CopySubresourceRegion(nv12_, 0, 0, 0, 0, tex, (UINT) index, &box);
+    } else if (frame->format == AV_PIX_FMT_NV12) {
+        if (ensure_staging(w, h)) {
+            D3D11_MAPPED_SUBRESOURCE map = {};
+            if (SUCCEEDED(ctx_->Map(staging_, 0, D3D11_MAP_WRITE, 0, &map))) {
+                for (int y = 0; y < h; ++y) {
+                    memcpy((uint8_t *) map.pData + y * map.RowPitch, frame->data[0] + y * frame->linesize[0], w);
+                }
+                uint8_t *dst_uv = (uint8_t *) map.pData + map.RowPitch * h;
+                for (int y = 0; y < h / 2; ++y) {
+                    memcpy(dst_uv + y * map.RowPitch, frame->data[1] + y * frame->linesize[1], w);
+                }
+                ctx_->Unmap(staging_, 0);
+                ctx_->CopyResource(nv12_, staging_);
             }
-        } else if (frame->color_range == AVCOL_RANGE_MPEG) {
-            if (full_range_) {
-                full_range_ = false;
-                color_cbuf_dirty_ = true;
+        }
+    } else if (frame->format == AV_PIX_FMT_YUV420P || frame->format == AV_PIX_FMT_YUVJ420P) {
+        upload_yuv420(frame->data[0], frame->linesize[0], frame->data[1], frame->data[2], frame->linesize[1], w, h);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+void VideoPipeline::render_loop() {
+    DWORD mmcss_idx = 0;
+    HANDLE mmcss = AvSetMmThreadCharacteristicsW(L"Playback", &mmcss_idx);
+    std::optional<VideoFrame> current;
+    bool uploaded = false;
+    auto last_stats = std::chrono::steady_clock::now();
+    uint64_t last_received = received_count_.load();
+    uint64_t last_bytes = received_bytes_.load();
+    uint64_t last_decoded = decoded_count_.load();
+    while (worker_run_) {
+        {
+            std::unique_lock<std::mutex> lock(frame_mu_);
+            if (!current && frames_.empty()) {
+                frame_cv_.wait(lock, [this] { return !worker_run_ || !frames_.empty(); });
             }
         }
-        if (!ensure_nv12(w, h)) {
-            av_frame_unref(frame);
-            continue;
+        if (!worker_run_) break;
+        int64_t audio_time;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            audio_time = playback_clock_ ? playback_clock_() : 0;
         }
-        if (frame->format == AV_PIX_FMT_D3D11) {
-            auto *tex = (ID3D11Texture2D *) frame->data[0];
-            intptr_t index = (intptr_t) frame->data[1];
-            if (!tex) {
-                av_frame_unref(frame);
+        {
+            std::unique_lock<std::mutex> lock(frame_mu_);
+            auto next = frames_.take(audio_time);
+            if (next) {
+                current = std::move(next);
+                uploaded = false;
+            }
+            if (!current) {
+                frame_cv_.wait_for(lock, std::chrono::milliseconds(2));
                 continue;
             }
-            D3D11_BOX box = {0, 0, 0, (UINT) w, (UINT) h, 1};
-            ctx_->CopySubresourceRegion(nv12_, 0, 0, 0, 0, tex, (UINT) index, &box);
-        } else if (frame->format == AV_PIX_FMT_NV12) {
-            if (ensure_staging(w, h)) {
-                D3D11_MAPPED_SUBRESOURCE map = {};
-                if (SUCCEEDED(ctx_->Map(staging_, 0, D3D11_MAP_WRITE, 0, &map))) {
-                    for (int y = 0; y < h; ++y) {
-                        memcpy((uint8_t *) map.pData + y * map.RowPitch, frame->data[0] + y * frame->linesize[0], w);
-                    }
-                    uint8_t *dst_uv = (uint8_t *) map.pData + map.RowPitch * h;
-                    for (int y = 0; y < h / 2; ++y) {
-                        memcpy(dst_uv + y * map.RowPitch, frame->data[1] + y * frame->linesize[1], w);
-                    }
-                    ctx_->Unmap(staging_, 0);
-                    ctx_->CopyResource(nv12_, staging_);
-                }
-            }
-        } else if (frame->format == AV_PIX_FMT_YUV420P || frame->format == AV_PIX_FMT_YUVJ420P) {
-            upload_yuv420(frame->data[0], frame->linesize[0], frame->data[1], frame->data[2], frame->linesize[1], w, h);
         }
-        bool first = !has_frame_.exchange(true);
-        present_nv12();
-        av_frame_unref(frame);
-        if (first && first_frame_fn_) {
-            first_frame_fn_();
+        HRESULT hr = E_FAIL;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (current->generation != generation_.load()) {
+                current.reset();
+                continue;
+            }
+            if (!uploaded) uploaded = upload_frame(current->data.get());
+            if (uploaded) {
+                if (!has_frame_.exchange(true) && first_frame_fn_) first_frame_fn_();
+                hr = present_nv12();
+            }
+            if (hr == S_OK) {
+                ++presented_count_;
+            }
+        }
+        int64_t video_time = current->timestamp_ns;
+        if (hr == S_OK || (FAILED(hr) && hr != DXGI_ERROR_WAS_STILL_DRAWING)) {
+            current.reset();
+        } else {
+            if (hr == DXGI_ERROR_WAS_STILL_DRAWING) ++busy_count_;
+            std::unique_lock<std::mutex> lock(frame_mu_);
+            frame_cv_.wait_for(lock, std::chrono::milliseconds(hr == DXGI_STATUS_OCCLUDED ? 16 : 1));
+        }
+        auto now = std::chrono::steady_clock::now();
+        if (now - last_stats >= std::chrono::seconds(5)) {
+            size_t encoded, pending;
+            uint64_t discarded;
+            {
+                std::lock_guard<std::mutex> lock(q_mu_);
+                encoded = q_.size();
+            }
+            {
+                std::lock_guard<std::mutex> lock(frame_mu_);
+                pending = frames_.size();
+                discarded = frames_.discarded();
+            }
+            double seconds = std::chrono::duration<double>(now - last_stats).count();
+            uint64_t received = received_count_.load();
+            uint64_t bytes = received_bytes_.load();
+            uint64_t decoded = decoded_count_.load();
+            char line[448];
+            snprintf(line, sizeof(line),
+                     "video stats: size=%dx%d input_fps=%.1f decode_fps=%.1f input_mbps=%.2f decoded=%llu presented=%llu skipped=%llu busy=%llu encoded=%zu pending=%zu max_decode_us=%llu max_submit_wait_us=%llu av_delta_ms=%lld",
+                     width_.load(), height_.load(), (received - last_received) / seconds,
+                     (decoded - last_decoded) / seconds, (bytes - last_bytes) * 8.0 / seconds / 1000000,
+                     (unsigned long long) decoded, (unsigned long long) presented_count_.load(),
+                     (unsigned long long) discarded, (unsigned long long) busy_count_.load(), encoded, pending,
+                     (unsigned long long) max_decode_us_.exchange(0), (unsigned long long) max_submit_wait_us_.exchange(0),
+                     (long long) (audio_time && video_time ? (video_time - audio_time) / 1000000 : 0));
+            append_log(line);
+            last_stats = now;
+            last_received = received;
+            last_bytes = bytes;
+            last_decoded = decoded;
         }
     }
+    if (mmcss) AvRevertMmThreadCharacteristics(mmcss);
 }
 
 void VideoPipeline::upload_yuv420(const uint8_t *y, int y_stride, const uint8_t *u, const uint8_t *v, int uv_stride, int w, int h) {
@@ -705,16 +856,16 @@ void VideoPipeline::upload_yuv420(const uint8_t *y, int y_stride, const uint8_t 
     }
 }
 
-void VideoPipeline::present_nv12() {
+HRESULT VideoPipeline::present_nv12() {
     if (!rtv_ || !swapchain_) {
-        return;
+        return E_FAIL;
     }
     RECT rc = {};
     GetClientRect(hwnd_, &rc);
     int cw = rc.right - rc.left;
     int ch = rc.bottom - rc.top;
     if (cw <= 0 || ch <= 0) {
-        return;
+        return DXGI_STATUS_OCCLUDED;
     }
 
     D3D11_VIEWPORT vp = {};
@@ -793,14 +944,15 @@ void VideoPipeline::present_nv12() {
     ID3D11ShaderResourceView *none[2] = {};
     ctx_->PSSetShaderResources(0, 2, none);
 
-    HRESULT hr = swapchain_->Present(0, tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0);
+    HRESULT hr = swapchain_->Present(0, DXGI_PRESENT_DO_NOT_WAIT | (tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0));
     if (hr == DXGI_ERROR_INVALID_CALL && tearing_) {
         tearing_ = false;
-        hr = swapchain_->Present(0, 0);
+        hr = swapchain_->Present(0, DXGI_PRESENT_DO_NOT_WAIT);
     }
     if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
         append_log("DXGI device lost during present");
     }
+    return hr;
 }
 
 } // namespace airscreen

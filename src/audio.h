@@ -1,5 +1,7 @@
 #pragma once
 
+#include "media_timing.h"
+
 #include <cstdint>
 #include <mutex>
 #include <vector>
@@ -19,15 +21,17 @@ public:
     void submit(const uint8_t *data, int len, uint64_t ntp_ns);
     bool is_running() const { return running_.load(); }
     void render_thread();
+    int64_t playback_time_ns();
 
 private:
     bool init_decoder(unsigned char codec_type);
     bool init_wasapi();
+    void receive_frames();
     void teardown_wasapi();
     void stop_locked();
-    void push_pcm(const int16_t *pcm, int frames, int channels);
+    void push_pcm(const int16_t *pcm, int frames, int channels, int64_t timestamp_ns);
     bool ensure_swr(int in_fmt, int in_rate, int in_ch);
-    void convert_and_push(const uint8_t **src, int in_samples);
+    void convert_and_push(const uint8_t **src, int in_samples, int64_t timestamp_ns);
 
     void *av_codec_ = nullptr;
     void *av_frame_ = nullptr;
@@ -58,6 +62,7 @@ private:
     size_t rpos_ = 0;
     size_t wpos_ = 0;
     size_t count_ = 0;
+    AudioTimeline timeline_;
     bool buffering_ = true; // refilling cushion before playing; guarded by mu_
     unsigned rebuffers_ = 0;
     size_t dropped_ = 0;

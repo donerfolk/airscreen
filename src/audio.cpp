@@ -88,6 +88,17 @@ size_t ms_to_samples(int rate, int ch, int ms) {
     return (size_t) rate * (size_t) ch * (size_t) ms / 1000;
 }
 
+int64_t monotonic_ns() {
+    static const int64_t frequency = [] {
+        LARGE_INTEGER value;
+        QueryPerformanceFrequency(&value);
+        return value.QuadPart;
+    }();
+    LARGE_INTEGER value;
+    QueryPerformanceCounter(&value);
+    return value.QuadPart / frequency * 1000000000 + value.QuadPart % frequency * 1000000000 / frequency;
+}
+
 DWORD WINAPI audio_thread_proc(LPVOID p) {
     auto *self = static_cast<AudioPipeline *>(p);
     self->render_thread();
@@ -185,16 +196,24 @@ void AudioPipeline::stop_locked() {
     buffering_ = true;
     ring_.clear();
     rpos_ = wpos_ = count_ = 0;
+    timeline_.clear();
 }
 
 void AudioPipeline::flush() {
     std::lock_guard<std::mutex> dlock(dec_mu_);
     std::lock_guard<std::mutex> lock(mu_);
     rpos_ = wpos_ = count_ = 0;
+    timeline_.clear();
     buffering_ = true;
     if (av_codec_) {
         avcodec_flush_buffers((AVCodecContext *) av_codec_);
     }
+}
+
+int64_t AudioPipeline::playback_time_ns() {
+    std::lock_guard<std::mutex> lock(mu_);
+    return running_ && out_rate_ > 0 && out_ch_ > 0
+        ? timeline_.position(monotonic_ns(), out_rate_ * out_ch_) : 0;
 }
 
 void AudioPipeline::set_volume(float linear) {
@@ -229,6 +248,7 @@ bool AudioPipeline::init_decoder(unsigned char codec_type) {
     av_channel_layout_default(&ctx->ch_layout, src_ch_);
     ctx->request_sample_fmt = AV_SAMPLE_FMT_S16;
     ctx->flags |= AV_CODEC_FLAG_LOW_DELAY;
+    ctx->pkt_timebase = AVRational{1, 1000000000};
     if (id == AV_CODEC_ID_ALAC) {
         set_extra(ctx, kAlacMagic, (int) sizeof(kAlacMagic));
     } else if (codec_type == 4) {
@@ -380,6 +400,7 @@ bool AudioPipeline::init_wasapi() {
     std::lock_guard<std::mutex> lock(mu_);
     ring_.assign(cap, 0);
     rpos_ = wpos_ = count_ = 0;
+    timeline_.clear();
     return true;
 }
 
@@ -429,7 +450,7 @@ bool AudioPipeline::ensure_swr(int in_fmt, int in_rate, int in_ch) {
     return true;
 }
 
-void AudioPipeline::convert_and_push(const uint8_t **src, int in_samples) {
+void AudioPipeline::convert_and_push(const uint8_t **src, int in_samples, int64_t timestamp_ns) {
     if (!swr_ || in_samples <= 0) {
         return;
     }
@@ -439,19 +460,26 @@ void AudioPipeline::convert_and_push(const uint8_t **src, int in_samples) {
     }
     std::vector<int16_t> pcm((size_t) out_samples * (size_t) out_ch_ + 32);
     uint8_t *dst = (uint8_t *) pcm.data();
+    int64_t delay_ns = swr_get_delay((SwrContext *) swr_, 1000000000);
     int got = swr_convert((SwrContext *) swr_, &dst, out_samples, src, in_samples);
     if (got > 0) {
-        push_pcm(pcm.data(), got, out_ch_);
+        push_pcm(pcm.data(), got, out_ch_, timestamp_ns > 0 ? timestamp_ns - delay_ns : 0);
     }
 }
 
-void AudioPipeline::push_pcm(const int16_t *pcm, int frames, int channels) {
+void AudioPipeline::push_pcm(const int16_t *pcm, int frames, int channels, int64_t timestamp_ns) {
     std::lock_guard<std::mutex> lock(mu_);
     if (ring_.empty() || frames <= 0 || channels <= 0) {
         return;
     }
     size_t samples = (size_t) frames * (size_t) channels;
     size_t cap = ring_.size();
+    if (samples > cap) {
+        size_t trim = samples - cap;
+        pcm += trim;
+        samples = cap;
+        timestamp_ns += AudioTimeline::duration_ns(trim, out_rate_ * out_ch_);
+    }
     size_t max_keep = ms_to_samples(out_rate_, out_ch_, kMaxMs);
     if (max_keep < samples) {
         max_keep = samples;
@@ -468,7 +496,9 @@ void AudioPipeline::push_pcm(const int16_t *pcm, int frames, int channels) {
         rpos_ = (rpos_ + drop) % cap;
         count_ -= drop;
         dropped_ += drop;
+        timeline_.discard(drop, out_rate_ * out_ch_);
     }
+    timeline_.append(timestamp_ns, samples);
     float vol = volume_.load();
     for (size_t i = 0; i < samples; ++i) {
         int v = (int) (pcm[i] * vol);
@@ -489,7 +519,6 @@ void AudioPipeline::push_pcm(const int16_t *pcm, int frames, int channels) {
 }
 
 void AudioPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns) {
-    (void) ntp_ns;
     if (!data || len <= 0) {
         return;
     }
@@ -504,7 +533,7 @@ void AudioPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns) {
             return;
         }
         const uint8_t *src = data;
-        convert_and_push(&src, frames);
+        convert_and_push(&src, frames, (int64_t) ntp_ns);
         return;
     }
     if (!av_codec_ || !av_pkt_ || !av_frame_) {
@@ -512,12 +541,16 @@ void AudioPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns) {
     }
     auto *ctx = (AVCodecContext *) av_codec_;
     auto *pkt = (AVPacket *) av_pkt_;
-    auto *frame = (AVFrame *) av_frame_;
     if (av_new_packet(pkt, len) < 0) {
         return;
     }
     memcpy(pkt->data, data, (size_t) len);
+    pkt->pts = ntp_ns ? (int64_t) ntp_ns : AV_NOPTS_VALUE;
     int serr = avcodec_send_packet(ctx, pkt);
+    if (serr == AVERROR(EAGAIN)) {
+        receive_frames();
+        serr = avcodec_send_packet(ctx, pkt);
+    }
     av_packet_unref(pkt);
     if (serr < 0 && serr != AVERROR(EAGAIN)) {
         static int decode_errs = 0;
@@ -529,6 +562,12 @@ void AudioPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns) {
         }
         return;
     }
+    receive_frames();
+}
+
+void AudioPipeline::receive_frames() {
+    auto *ctx = (AVCodecContext *) av_codec_;
+    auto *frame = (AVFrame *) av_frame_;
     while (avcodec_receive_frame(ctx, frame) == 0) {
         int in_rate = frame->sample_rate > 0 ? frame->sample_rate : src_rate_;
         int in_ch = frame->ch_layout.nb_channels > 0 ? frame->ch_layout.nb_channels : src_ch_;
@@ -536,7 +575,8 @@ void AudioPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns) {
             av_frame_unref(frame);
             continue;
         }
-        convert_and_push((const uint8_t **) frame->extended_data, frame->nb_samples);
+        convert_and_push((const uint8_t **) frame->extended_data, frame->nb_samples,
+                         frame->pts == AV_NOPTS_VALUE ? 0 : frame->pts);
         av_frame_unref(frame);
     }
 }
@@ -565,6 +605,7 @@ void AudioPipeline::render_thread() {
         if (!running_) {
             break;
         }
+        int64_t output_now = monotonic_ns();
         UINT32 padding = 0;
         if (FAILED(client->GetCurrentPadding(&padding))) {
             continue;
@@ -590,6 +631,7 @@ void AudioPipeline::render_thread() {
                 rpos_ = (rpos_ + drop) % cap;
                 count_ -= drop;
                 dropped_ += drop;
+                timeline_.discard(drop, out_rate_ * out_ch_);
                 buffering_ = false;
             }
             if (!buffering_) {
@@ -608,21 +650,27 @@ void AudioPipeline::render_thread() {
             if (n < need) {
                 memset(tmp.data() + n, 0, (need - n) * sizeof(int16_t));
             }
-        }
-        if (out_float_) {
-            float *out = (float *) dest;
-            for (size_t i = 0; i < need; ++i) {
-                out[i] = tmp[i] * (1.0f / 32768.0f);
+            if (out_float_) {
+                float *out = (float *) dest;
+                for (size_t i = 0; i < need; ++i) {
+                    out[i] = tmp[i] * (1.0f / 32768.0f);
+                }
+            } else if (out_bits_ >= 24) {
+                int32_t *out = (int32_t *) dest;
+                for (size_t i = 0; i < need; ++i) {
+                    out[i] = (int32_t) tmp[i] << 16;
+                }
+            } else {
+                memcpy(dest, tmp.data(), need * sizeof(int16_t));
             }
-        } else if (out_bits_ >= 24) {
-            int32_t *out = (int32_t *) dest;
-            for (size_t i = 0; i < need; ++i) {
-                out[i] = (int32_t) tmp[i] << 16;
+            HRESULT released = render->ReleaseBuffer(avail, 0);
+            if (SUCCEEDED(released)) {
+                timeline_.schedule(n, output_now + AudioTimeline::duration_ns(
+                    (size_t) padding * out_ch_, out_rate_ * out_ch_), out_rate_ * out_ch_, output_now);
+            } else {
+                timeline_.discard(n, out_rate_ * out_ch_);
             }
-        } else {
-            memcpy(dest, tmp.data(), need * sizeof(int16_t));
         }
-        render->ReleaseBuffer(avail, 0);
     }
     if (mmcss) {
         AvRevertMmThreadCharacteristics(mmcss);
