@@ -57,6 +57,7 @@ To stop, end mirroring on the iPhone. Close the window to quit AirScreen. Right-
 ## Troubleshooting
 
 **AirScreen doesn't appear on the iPhone**
+- On Windows, discovery uses a connected physical Ethernet or Wi-Fi adapter and its current IPv4 address. VPN and Hyper-V virtual adapters are excluded.
 - Make sure both devices are on the same Wi-Fi network (not a guest network).
 - Turn off any VPN on the PC or the iPhone.
 - Right-click the tray icon → **Allow through firewall**.

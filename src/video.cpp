@@ -239,6 +239,7 @@ void VideoPipeline::flush() {
     if (av_codec_) {
         avcodec_flush_buffers((AVCodecContext *) av_codec_);
     }
+    q_cv_.notify_all();
 }
 
 void VideoPipeline::clear() {
@@ -254,6 +255,7 @@ void VideoPipeline::clear() {
         ctx_->ClearRenderTargetView(rtv_, black);
         swapchain_->Present(0, tearing_ ? DXGI_PRESENT_ALLOW_TEARING : 0);
     }
+    q_cv_.notify_all();
 }
 
 void VideoPipeline::set_cover(bool cover) {
@@ -537,13 +539,14 @@ void VideoPipeline::submit(const uint8_t *data, int len, uint64_t ntp_ns, bool h
     pkt.ntp_ns = ntp_ns;
     pkt.hevc = hevc;
     {
-        std::lock_guard<std::mutex> qlock(q_mu_);
-        if (q_.size() >= kMaxQueued) {
-            q_.pop_front();
+        std::unique_lock<std::mutex> qlock(q_mu_);
+        q_cv_.wait(qlock, [this] { return q_.size() < kMaxQueued || !worker_run_; });
+        if (!worker_run_) {
+            return;
         }
         q_.push_back(std::move(pkt));
     }
-    q_cv_.notify_one();
+    q_cv_.notify_all();
 }
 
 void VideoPipeline::decode_loop() {
@@ -564,6 +567,7 @@ void VideoPipeline::decode_loop() {
             pkt = std::move(q_.front());
             q_.pop_front();
         }
+        q_cv_.notify_all();
         decode_packet(pkt);
     }
     if (mmcss) {
@@ -648,7 +652,8 @@ void VideoPipeline::decode_packet(const EncodedPacket &pkt) {
                 av_frame_unref(frame);
                 continue;
             }
-            ctx_->CopySubresourceRegion(nv12_, 0, 0, 0, 0, tex, (UINT) index, nullptr);
+            D3D11_BOX box = {0, 0, 0, (UINT) w, (UINT) h, 1};
+            ctx_->CopySubresourceRegion(nv12_, 0, 0, 0, 0, tex, (UINT) index, &box);
         } else if (frame->format == AV_PIX_FMT_NV12) {
             if (ensure_staging(w, h)) {
                 D3D11_MAPPED_SUBRESOURCE map = {};

@@ -111,9 +111,9 @@ target_link_libraries(airplay PUBLIC
     bcrypt
 )
 if (MSVC)
-    target_compile_options(airplay PRIVATE /wd4244 /wd4267 /wd4018 /wd4996 /FI"${COMPAT_DIR}/airscreen_types.h")
-    target_compile_options(plist PRIVATE /wd4244 /wd4267 /wd4996 /wd4018 /FI"${COMPAT_DIR}/airscreen_types.h")
-    target_compile_options(dnssd PRIVATE /wd4244 /wd4267 /FI"${COMPAT_DIR}/airscreen_types.h")
+    target_compile_options(airplay PRIVATE /wd4244 /wd4267 /wd4018 /wd4996 "/FI${COMPAT_DIR}/airscreen_types.h")
+    target_compile_options(plist PRIVATE /wd4244 /wd4267 /wd4996 /wd4018 "/FI${COMPAT_DIR}/airscreen_types.h")
+    target_compile_options(dnssd PRIVATE /wd4244 /wd4267 "/FI${COMPAT_DIR}/airscreen_types.h")
 endif()
 
 if (MSVC)
