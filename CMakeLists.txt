@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(AirScreen VERSION 1.0.0 LANGUAGES C CXX)
+project(AirScreen VERSION 1.2.0 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -111,9 +111,9 @@ target_link_libraries(airplay PUBLIC
     bcrypt
 )
 if (MSVC)
-    target_compile_options(airplay PRIVATE /wd4244 /wd4267 /wd4018 /wd4996 /FI"${COMPAT_DIR}/airscreen_types.h")
-    target_compile_options(plist PRIVATE /wd4244 /wd4267 /wd4996 /wd4018 /FI"${COMPAT_DIR}/airscreen_types.h")
-    target_compile_options(dnssd PRIVATE /wd4244 /wd4267 /FI"${COMPAT_DIR}/airscreen_types.h")
+    target_compile_options(airplay PRIVATE /wd4244 /wd4267 /wd4018 /wd4996 "/FI${COMPAT_DIR}/airscreen_types.h")
+    target_compile_options(plist PRIVATE /wd4244 /wd4267 /wd4996 /wd4018 "/FI${COMPAT_DIR}/airscreen_types.h")
+    target_compile_options(dnssd PRIVATE /wd4244 /wd4267 "/FI${COMPAT_DIR}/airscreen_types.h")
 endif()
 
 if (MSVC)
@@ -189,4 +189,15 @@ endif()
 install(TARGETS AirScreen RUNTIME DESTINATION .)
 if (FFMPEG_BIN_DIR)
     install(DIRECTORY "${FFMPEG_BIN_DIR}/" DESTINATION . FILES_MATCHING PATTERN "*.dll")
+endif()
+
+include(CTest)
+if (BUILD_TESTING)
+    add_executable(MediaTimingTests tests/media_timing_test.cpp)
+    target_include_directories(MediaTimingTests PRIVATE src)
+    add_test(NAME MediaTiming COMMAND MediaTimingTests)
+
+    add_executable(WindowSizeTests tests/window_size_test.cpp)
+    target_include_directories(WindowSizeTests PRIVATE src)
+    add_test(NAME WindowSize COMMAND WindowSizeTests)
 endif()

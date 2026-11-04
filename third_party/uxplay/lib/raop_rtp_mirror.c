@@ -251,14 +251,13 @@ raop_rtp_mirror_thread(void *arg)
                 break;
             }
 
-            // Windows SO_RCVTIMEO is a DWORD in milliseconds, not struct timeval.
 #ifdef _WIN32
             {
-                DWORD rcv_ms = 5;
-                if (setsockopt(stream_fd, SOL_SOCKET, SO_RCVTIMEO, CAST &rcv_ms, sizeof(rcv_ms)) < 0) {
+                u_long nonblocking = 1;
+                if (ioctlsocket(stream_fd, FIONBIO, &nonblocking) == SOCKET_ERROR) {
                     int sock_err = SOCKET_GET_ERROR();
                     logger_log(raop_rtp_mirror->logger, LOGGER_ERR,
-                               "raop_rtp_mirror could not set stream socket timeout %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
+                               "raop_rtp_mirror could not set stream socket nonblocking %d %s", sock_err, SOCKET_ERROR_STRING(sock_err));
                     break;
                 }
             }

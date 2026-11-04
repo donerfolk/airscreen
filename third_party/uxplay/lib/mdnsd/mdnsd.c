@@ -13,6 +13,7 @@
  */
 
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,10 @@
 
 #include "../compat.h"
 #include "mdnsd.h"
+
+#ifdef WIN32
+#include <iphlpapi.h>
+#endif
 
 #define MDNS_ADDR4 "224.0.0.251"
 #define MDNS_ADDR6 "ff02::fb"
@@ -347,6 +352,69 @@ static int mdns_query_type_matches(uint16_t query_type, uint16_t record_type)
 
 static uint32_t mdns_get_default_ipv4(void)
 {
+#ifdef WIN32
+    ULONG size = 15000;
+    ULONG flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
+                  GAA_FLAG_SKIP_DNS_SERVER;
+    IP_ADAPTER_ADDRESSES *adapters = malloc(size);
+    uint32_t addr = 0;
+    ULONG metric = ULONG_MAX;
+    ULONG index = ULONG_MAX;
+    ULONG result;
+
+    if (!adapters) {
+        return 0;
+    }
+    result = GetAdaptersAddresses(AF_INET, flags, NULL, adapters, &size);
+    if (result == ERROR_BUFFER_OVERFLOW) {
+        free(adapters);
+        adapters = malloc(size);
+        if (!adapters) {
+            return 0;
+        }
+        result = GetAdaptersAddresses(AF_INET, flags, NULL, adapters, &size);
+    }
+
+    if (result == NO_ERROR) {
+        for (IP_ADAPTER_ADDRESSES *a = adapters; a; a = a->Next) {
+            MIB_IF_ROW2 iface = {0};
+            if (a->OperStatus != IfOperStatusUp ||
+                (a->IfType != IF_TYPE_ETHERNET_CSMACD &&
+                 a->IfType != IF_TYPE_IEEE80211) ||
+                (a->Flags & IP_ADAPTER_NO_MULTICAST)) {
+                continue;
+            }
+            iface.InterfaceLuid = a->Luid;
+            if (GetIfEntry2(&iface) != NO_ERROR ||
+                !iface.InterfaceAndOperStatusFlags.HardwareInterface) {
+                continue;
+            }
+            for (IP_ADAPTER_UNICAST_ADDRESS *u = a->FirstUnicastAddress; u; u = u->Next) {
+                struct sockaddr_in *local;
+                uint32_t host;
+                if (!u->Address.lpSockaddr ||
+                    u->Address.lpSockaddr->sa_family != AF_INET ||
+                    u->DadState != IpDadStatePreferred) {
+                    continue;
+                }
+                local = (struct sockaddr_in *) u->Address.lpSockaddr;
+                host = ntohl(local->sin_addr.s_addr);
+                if (!host || (host >> 24) == 127) {
+                    continue;
+                }
+                if (!addr || a->Ipv4Metric < metric ||
+                    (a->Ipv4Metric == metric && a->IfIndex < index)) {
+                    addr = local->sin_addr.s_addr;
+                    metric = a->Ipv4Metric;
+                    index = a->IfIndex;
+                }
+                break;
+            }
+        }
+    }
+    free(adapters);
+    return addr;
+#else
     int fd;
     uint32_t addr = 0;
     struct sockaddr_in remote;
@@ -370,6 +438,7 @@ static uint32_t mdns_get_default_ipv4(void)
 
     CLOSESOCKET(fd);
     return addr;
+#endif
 }
 
 static int mdns_get_default_ipv6(unsigned char addr[16], unsigned int *scope_id)
@@ -454,7 +523,12 @@ static int mdns_open_socket4(uint32_t iface_addr)
     if (iface_addr) {
         struct in_addr iface;
         iface.s_addr = iface_addr;
-        setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, (const char *) &iface, sizeof(iface));
+        if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF,
+                       (const char *) &iface, sizeof(iface)) == -1) {
+            int error = SOCKET_GET_ERROR();
+            CLOSESOCKET(fd);
+            return -error;
+        }
     }
 
     memset(&addr, 0, sizeof(addr));
@@ -474,6 +548,7 @@ static int mdns_open_socket4(uint32_t iface_addr)
     if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
                    (const char *) &mreq, sizeof(mreq)) == -1) {
         int error = SOCKET_GET_ERROR();
+#ifndef WIN32
         if (iface_addr) {
             mreq.imr_interface.s_addr = htonl(INADDR_ANY);
             if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
@@ -481,6 +556,7 @@ static int mdns_open_socket4(uint32_t iface_addr)
                 return fd;
             }
         }
+#endif
         CLOSESOCKET(fd);
         return -error;
     }
@@ -990,6 +1066,12 @@ int mdnsd_start(mdnsd_t *mdnsd)
     int error6 = 0;
 
     mdnsd->ipv4_addr = mdns_get_default_ipv4();
+#ifdef WIN32
+    if (!mdnsd->ipv4_addr) {
+        MUTEX_UNLOCK(mdnsd->mutex);
+        return -WSAEADDRNOTAVAIL;
+    }
+#endif
     mdns_get_default_ipv6(mdnsd->ipv6_addr, &mdnsd->ipv6_scope_id);
 
     mdnsd->sock_fd4 = mdns_open_socket4(mdnsd->ipv4_addr);

@@ -161,6 +161,7 @@ bool Receiver::start(HWND hwnd, const Settings &settings, UiFn ui) {
     }
     parse_mac(mac_, hw_bytes_);
     ntp_global_init();
+    video_.set_playback_clock([this] { return audio_.playback_time_ns(); });
     on_log(LOGGER_INFO, "starting D3D11");
     if (!video_.init(hwnd_)) {
         on_log(LOGGER_ERR, "D3D11 init failed");
@@ -206,6 +207,20 @@ void Receiver::stop() {
     audio_.stop();
     video_.shutdown();
     connected_ = false;
+}
+
+bool Receiver::stop_mirroring() {
+    if (!raop_) return false;
+    auto *raop = (raop_t *) raop_;
+    raop_stop_httpd(raop);
+    open_conns_ = 0;
+    teardown_session();
+    unsigned short port = raop_port_;
+    if (raop_start_httpd(raop, &port) < 0) {
+        on_log(LOGGER_ERR, "could not restart the AirPlay listener after stopping mirroring");
+        return false;
+    }
+    return true;
 }
 
 bool Receiver::rename(const std::string &name) {

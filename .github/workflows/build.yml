@@ -20,7 +20,12 @@ jobs:
         run: choco install openssl innosetup -y --no-progress
 
       - name: Build
-        run: powershell -ExecutionPolicy Bypass -File scripts\build.ps1
+        shell: pwsh
+        run: ./scripts/build.ps1
+
+      - name: Test
+        shell: pwsh
+        run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Build installer
         shell: pwsh

@@ -34,6 +34,7 @@ public:
 
     bool start(HWND hwnd, const Settings &settings, UiFn ui);
     void stop();
+    bool stop_mirroring();
     bool rename(const std::string &name);
     bool set_require_pin(bool on);
     void set_always_on_top_flag(bool on) { (void) on; }

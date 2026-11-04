@@ -1,5 +1,7 @@
 #pragma once
 
+#include "media_timing.h"
+
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include <atomic>
@@ -27,6 +29,7 @@ public:
     void flush();
 
     void submit(const uint8_t *data, int len, uint64_t ntp_ns, bool hevc);
+    void set_playback_clock(std::function<int64_t()> fn);
     void set_source_size(int width, int height);
     void set_cover(bool cover);
     void set_first_frame_fn(std::function<void()> fn);
@@ -42,6 +45,7 @@ private:
     struct EncodedPacket {
         std::vector<uint8_t> data;
         uint64_t ntp_ns = 0;
+        uint64_t generation = 0;
         bool hevc = false;
     };
 
@@ -54,9 +58,12 @@ private:
     void decode_close();
     void decode_packet(const EncodedPacket &pkt);
     void decode_loop();
+    void receive_frames(uint64_t generation);
+    void render_loop();
+    bool upload_frame(AVFrame *frame);
     void start_worker();
     void stop_worker();
-    void present_nv12();
+    HRESULT present_nv12();
     void upload_yuv420(const uint8_t *y, int y_stride, const uint8_t *u, const uint8_t *v, int uv_stride, int w, int h);
 
     HWND hwnd_ = nullptr;
@@ -84,6 +91,7 @@ private:
     void *av_frame_ = nullptr;
     void *av_pkt_ = nullptr;
     bool hevc_ = false;
+    bool decoder_reported_ = false;
     bool tearing_ = false;
 
     std::atomic<int> width_{0};
@@ -100,6 +108,19 @@ private:
     std::atomic<bool> cover_{false};
     std::mutex mu_;
     std::function<void()> first_frame_fn_;
+    std::function<int64_t()> playback_clock_;
+    std::mutex decode_mu_;
+    std::mutex frame_mu_;
+    std::condition_variable frame_cv_;
+    VideoFrameQueue frames_;
+    std::atomic<uint64_t> generation_{0};
+    std::atomic<uint64_t> received_count_{0};
+    std::atomic<uint64_t> received_bytes_{0};
+    std::atomic<uint64_t> decoded_count_{0};
+    std::atomic<uint64_t> presented_count_{0};
+    std::atomic<uint64_t> busy_count_{0};
+    std::atomic<uint64_t> max_decode_us_{0};
+    std::atomic<uint64_t> max_submit_wait_us_{0};
 
     static constexpr size_t kMaxQueued = 6;
     std::mutex q_mu_;
@@ -107,6 +128,7 @@ private:
     std::deque<EncodedPacket> q_;
     std::atomic<bool> worker_run_{false};
     std::thread worker_;
+    std::thread renderer_;
 };
 
 } // namespace airscreen

@@ -2,7 +2,7 @@
 ; iscc /DCrtDir=<VS>\VC\Redist\MSVC\<ver>\x64\Microsoft.VC143.CRT scripts\airscreen.iss
 #define MyAppName "AirScreen"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.0"
+  #define MyAppVersion "1.2.0"
 #endif
 #define MyAppPublisher "AirScreen"
 #define MyAppURL "https://github.com/donerfolk/airscreen"
