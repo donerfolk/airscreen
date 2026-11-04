@@ -209,6 +209,20 @@ void Receiver::stop() {
     connected_ = false;
 }
 
+bool Receiver::stop_mirroring() {
+    if (!raop_) return false;
+    auto *raop = (raop_t *) raop_;
+    raop_stop_httpd(raop);
+    open_conns_ = 0;
+    teardown_session();
+    unsigned short port = raop_port_;
+    if (raop_start_httpd(raop, &port) < 0) {
+        on_log(LOGGER_ERR, "could not restart the AirPlay listener after stopping mirroring");
+        return false;
+    }
+    return true;
+}
+
 bool Receiver::rename(const std::string &name) {
     if (name.empty()) {
         return false;

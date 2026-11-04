@@ -53,11 +53,13 @@ The installer isn't code-signed yet, so Windows SmartScreen may show "Windows pr
 2. On your iPhone, open **Control Center → Screen Mirroring** and pick **AirScreen**.
 3. If a PIN appears on the PC, enter it on the iPhone.
 
-To stop, end mirroring on the iPhone. Close the window to quit AirScreen. Right-click the window or the tray icon for settings.
+To stop mirroring, end it on the iPhone or choose **Stop mirroring** above **Exit** in the window or tray menu. AirScreen stays available for another connection. Close the window to quit AirScreen. Right-click the window or the tray icon for settings.
 
 **Streaming quality** defaults to 1080p at 30 FPS and also offers 1080p at 60 or 24 FPS, and 720p at 30 FPS (Smooth). Saved quality settings are preserved. Lower settings request a smaller stream from the iPhone, reducing network and decoding load. Changing quality restarts the receiver; reconnect the iPhone afterward. The iPhone chooses the actual stream dimensions and frame rate. For persistent playback delay, try 720p at 30 FPS before reducing audio buffering.
 
 **Size** sets the picture area to **0.5x**, **1x**, **1.5x**, or **2x** the resolution reported by the mirrored device. Use **Ctrl+1**, **Ctrl+2**, **Ctrl+3**, or **Ctrl+4**, respectively. A size selected before connecting applies when the stream starts. Dragging an edge returns to a custom size. Enable **Fixed Ratio** to keep the original picture proportions while resizing. **Auto Rotate Window** is enabled by default and adjusts the window when the mirrored device switches between portrait and landscape; in full screen, it updates the window size restored on exit. Both options are saved.
+
+In full screen, portrait video fits the screen height with its original proportions. **Fill screen (landscape only)** controls whether landscape video fills the display or keeps the complete picture visible.
 
 ## Troubleshooting
 

@@ -27,3 +27,4 @@
 #define IDM_SIZE_DOUBLE    40019
 #define IDM_FIXED_RATIO    40020
 #define IDM_AUTO_ROTATE    40021
+#define IDM_TRAY_STOP      40022

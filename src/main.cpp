@@ -141,7 +141,8 @@ void update_title(App *app) {
 }
 
 void apply_video_fill(App *app) {
-    app->receiver.video().set_cover(app->fullscreen && app->settings.fill_screen);
+    bool landscape = app->source_size.cx >= app->source_size.cy && app->source_size.cx > 0;
+    app->receiver.video().set_cover(app->fullscreen && app->settings.fill_screen && landscape);
 }
 
 void layout_chrome(App *app) {
@@ -300,6 +301,7 @@ void update_source_size(App *app, int width, int height) {
     SIZE previous = app->source_size;
     if (previous.cx == width && previous.cy == height) return;
     app->source_size = {width, height};
+    apply_video_fill(app);
     bool first = previous.cx <= 0 || previous.cy <= 0;
     bool rotated = (previous.cx > previous.cy) != (width > height);
     if ((first && (app->window_scale > 0 || app->settings.fixed_ratio)) ||
@@ -336,7 +338,7 @@ void return_to_menu(App *app) {
     app->connected = false;
     app->mirroring = false;
     app->source_size = {};
-    app->overlay_status = L"Waiting for iPhone";
+    app->overlay_status = app->start_failed ? L"Could not start. Check the log from Settings" : L"Waiting for iPhone";
     app->overlay_pin.clear();
     if (app->video_hwnd) {
         ShowWindow(app->video_hwnd, SW_HIDE);
@@ -440,13 +442,14 @@ void popup_settings_menu(App *app, POINT screen_pt, bool tray) {
     AppendMenuW(m, MF_STRING | (app->settings.require_pin ? MF_CHECKED : 0), IDM_TRAY_PIN, L"Require pairing PIN");
     AppendMenuW(m, MF_STRING | (app->fullscreen ? MF_CHECKED : 0), IDM_TRAY_FULL, L"Fullscreen");
     AppendMenuW(m, MF_STRING | (app->settings.fill_screen ? MF_CHECKED : 0), IDM_TRAY_FILL,
-                L"Fill screen (no black bars)");
+                L"Fill screen (landscape only)");
     AppendMenuW(m, MF_STRING | (airscreen::start_with_windows() ? MF_CHECKED : 0), IDM_TRAY_STARTUP,
                 L"Start with Windows");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(m, MF_STRING, IDM_TRAY_FIREWALL, L"Allow through firewall");
     AppendMenuW(m, MF_STRING, IDM_TRAY_LOG, L"Open log file");
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(m, MF_STRING | (app->connected ? 0 : MF_GRAYED), IDM_TRAY_STOP, L"Stop mirroring");
     AppendMenuW(m, MF_STRING, IDM_TRAY_EXIT, L"Exit");
     SetForegroundWindow(app->hwnd);
     KillTimer(app->hwnd, kTimerOverlay);
@@ -560,6 +563,12 @@ void handle_tray_cmd(App *app, UINT id) {
         ShellExecuteW(nullptr, L"open", p.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         break;
     }
+    case IDM_TRAY_STOP:
+        if (app->connected) {
+            app->start_failed = !app->receiver.stop_mirroring();
+            return_to_menu(app);
+        }
+        break;
     case IDM_TRAY_EXIT:
         DestroyWindow(app->hwnd);
         return;
