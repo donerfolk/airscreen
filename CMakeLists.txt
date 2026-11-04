@@ -196,4 +196,8 @@ if (BUILD_TESTING)
     add_executable(MediaTimingTests tests/media_timing_test.cpp)
     target_include_directories(MediaTimingTests PRIVATE src)
     add_test(NAME MediaTiming COMMAND MediaTimingTests)
+
+    add_executable(WindowSizeTests tests/window_size_test.cpp)
+    target_include_directories(WindowSizeTests PRIVATE src)
+    add_test(NAME WindowSize COMMAND WindowSizeTests)
 endif()

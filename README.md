@@ -27,6 +27,7 @@ AirScreen turns a Windows PC into a wireless AirPlay receiver. Your iPhone lists
 - Audio plays through your default Windows output device
 - Rename the receiver, require a pairing PIN, keep the window on top, fill the screen or letterbox
 - Light and dark idle screen
+- Native-resolution window sizes (0.5x, 1x, 1.5x, 2x), optional fixed aspect ratio, and automatic portrait/landscape sizing
 - Closing the window quits AirScreen; settings are also in the tray icon menu
 - Optional Start with Windows: waits in the system tray, ready to mirror to
 
@@ -55,6 +56,8 @@ The installer isn't code-signed yet, so Windows SmartScreen may show "Windows pr
 To stop, end mirroring on the iPhone. Close the window to quit AirScreen. Right-click the window or the tray icon for settings.
 
 **Streaming quality** defaults to 1080p at 30 FPS and also offers 1080p at 60 or 24 FPS, and 720p at 30 FPS (Smooth). Saved quality settings are preserved. Lower settings request a smaller stream from the iPhone, reducing network and decoding load. Changing quality restarts the receiver; reconnect the iPhone afterward. The iPhone chooses the actual stream dimensions and frame rate. For persistent playback delay, try 720p at 30 FPS before reducing audio buffering.
+
+**Size** sets the picture area to **0.5x**, **1x**, **1.5x**, or **2x** the resolution reported by the mirrored device. Use **Ctrl+1**, **Ctrl+2**, **Ctrl+3**, or **Ctrl+4**, respectively. A size selected before connecting applies when the stream starts. Dragging an edge returns to a custom size. Enable **Fixed Ratio** to keep the original picture proportions while resizing. **Auto Rotate Window** is enabled by default and adjusts the window when the mirrored device switches between portrait and landscape; in full screen, it updates the window size restored on exit. Both options are saved.
 
 ## Troubleshooting
 

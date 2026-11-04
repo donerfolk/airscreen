@@ -1,6 +1,7 @@
 #include "receiver.h"
 #include "settings.h"
 #include "ui.h"
+#include "window_size.h"
 #include "app/resource.h"
 #include "raop.h"
 
@@ -49,6 +50,19 @@ constexpr VideoQuality kVideoQualities[] = {
     {IDM_QUALITY_720_30, 1280, 720, 30, L"720p · 30 FPS (Smooth)"},
 };
 
+struct WindowSize {
+    UINT command;
+    double scale;
+    const wchar_t *label;
+};
+
+constexpr WindowSize kWindowSizes[] = {
+    {IDM_SIZE_HALF, 0.5, L"0.5x\tCtrl+1"},
+    {IDM_SIZE_NATIVE, 1.0, L"1x\tCtrl+2"},
+    {IDM_SIZE_ONE_HALF, 1.5, L"1.5x\tCtrl+3"},
+    {IDM_SIZE_DOUBLE, 2.0, L"2x\tCtrl+4"},
+};
+
 struct NameDlgState {
     std::wstring initial;
     std::wstring result;
@@ -73,6 +87,9 @@ struct App {
     LONG windowed_style = 0;
     LONG windowed_ex = 0;
     RECT windowed_rc = {};
+    RECT sizing_start_rc = {};
+    SIZE source_size = {};
+    double window_scale = 0;
     std::wstring overlay_status = L"Waiting for iPhone";
     std::wstring overlay_pin;
     std::wstring overlay_detail;
@@ -213,6 +230,84 @@ void toggle_fullscreen(App *app) {
     set_fullscreen(app, !app->fullscreen);
 }
 
+SIZE window_frame(App *app) {
+    LONG style = app->fullscreen ? app->windowed_style : GetWindowLongW(app->hwnd, GWL_STYLE);
+    LONG ex = app->fullscreen ? app->windowed_ex : GetWindowLongW(app->hwnd, GWL_EXSTYLE);
+    RECT frame = {};
+    AdjustWindowRectExForDpi(&frame, style & ~(WS_MAXIMIZE | WS_MINIMIZE), FALSE, ex, window_dpi(app->hwnd));
+    return {frame.right - frame.left, frame.bottom - frame.top};
+}
+
+RECT normal_window_rect(App *app) {
+    if (app->fullscreen) return app->windowed_rc;
+    RECT rect = {};
+    if (IsZoomed(app->hwnd) || IsIconic(app->hwnd)) {
+        WINDOWPLACEMENT placement = {sizeof(placement)};
+        GetWindowPlacement(app->hwnd, &placement);
+        rect = placement.rcNormalPosition;
+        MONITORINFO monitor = {sizeof(monitor)};
+        GetMonitorInfoW(MonitorFromWindow(app->hwnd, MONITOR_DEFAULTTONEAREST), &monitor);
+        OffsetRect(&rect, monitor.rcWork.left - monitor.rcMonitor.left,
+                   monitor.rcWork.top - monitor.rcMonitor.top);
+    } else {
+        GetWindowRect(app->hwnd, &rect);
+    }
+    return rect;
+}
+
+void resize_video_window(App *app, double scale) {
+    if (app->source_size.cx <= 0 || app->source_size.cy <= 0) return;
+    RECT current = normal_window_rect(app);
+    SIZE frame = window_frame(app);
+    MONITORINFO monitor = {sizeof(monitor)};
+    GetMonitorInfoW(MonitorFromRect(&current, MONITOR_DEFAULTTONEAREST), &monitor);
+    RECT work = monitor.rcWork;
+    if (scale <= 0) {
+        scale = (double) std::max(current.right - current.left - frame.cx,
+                                  current.bottom - current.top - frame.cy) /
+                std::max(app->source_size.cx, app->source_size.cy);
+        scale = std::min(scale, std::min((double) (work.right - work.left - frame.cx) / app->source_size.cx,
+                                         (double) (work.bottom - work.top - frame.cy) / app->source_size.cy));
+    }
+    SIZE size = airscreen::scaled_video_size(app->source_size, scale);
+    size.cx += frame.cx;
+    size.cy += frame.cy;
+    RECT target = airscreen::sized_window_rect(current, size, work);
+    if (app->fullscreen) {
+        app->windowed_rc = target;
+    } else if (IsZoomed(app->hwnd) || IsIconic(app->hwnd)) {
+        WINDOWPLACEMENT placement = {sizeof(placement)};
+        GetWindowPlacement(app->hwnd, &placement);
+        placement.rcNormalPosition = target;
+        OffsetRect(&placement.rcNormalPosition, monitor.rcMonitor.left - work.left,
+                   monitor.rcMonitor.top - work.top);
+        SetWindowPlacement(app->hwnd, &placement);
+    } else {
+        SetWindowPos(app->hwnd, nullptr, target.left, target.top, size.cx, size.cy,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+
+void select_window_size(App *app, const WindowSize &size) {
+    set_fullscreen(app, false);
+    if (IsZoomed(app->hwnd) || IsIconic(app->hwnd)) ShowWindow(app->hwnd, SW_RESTORE);
+    app->window_scale = size.scale;
+    resize_video_window(app, size.scale);
+}
+
+void update_source_size(App *app, int width, int height) {
+    if (width <= 0 || height <= 0) return;
+    SIZE previous = app->source_size;
+    if (previous.cx == width && previous.cy == height) return;
+    app->source_size = {width, height};
+    bool first = previous.cx <= 0 || previous.cy <= 0;
+    bool rotated = (previous.cx > previous.cy) != (width > height);
+    if ((first && (app->window_scale > 0 || app->settings.fixed_ratio)) ||
+        (app->settings.auto_rotate && (first || rotated || app->window_scale > 0))) {
+        resize_video_window(app, app->window_scale);
+    }
+}
+
 void set_boost(bool on) {
     static bool boosted = false;
     if (on == boosted) {
@@ -240,6 +335,7 @@ void return_to_menu(App *app) {
     set_boost(false);
     app->connected = false;
     app->mirroring = false;
+    app->source_size = {};
     app->overlay_status = L"Waiting for iPhone";
     app->overlay_pin.clear();
     if (app->video_hwnd) {
@@ -332,6 +428,14 @@ void popup_settings_menu(App *app, POINT screen_pt, bool tray) {
         AppendMenuW(quality, flags, preset.command, preset.label);
     }
     AppendMenuW(m, MF_POPUP, (UINT_PTR) quality, L"Streaming quality");
+    HMENU size = CreatePopupMenu();
+    for (const auto &preset : kWindowSizes) {
+        AppendMenuW(size, MF_STRING | (app->window_scale == preset.scale ? MF_CHECKED : 0),
+                    preset.command, preset.label);
+    }
+    AppendMenuW(m, MF_POPUP, (UINT_PTR) size, L"Size");
+    AppendMenuW(m, MF_STRING | (app->settings.fixed_ratio ? MF_CHECKED : 0), IDM_FIXED_RATIO, L"Fixed Ratio");
+    AppendMenuW(m, MF_STRING | (app->settings.auto_rotate ? MF_CHECKED : 0), IDM_AUTO_ROTATE, L"Auto Rotate Window");
     AppendMenuW(m, MF_STRING | (app->settings.always_on_top ? MF_CHECKED : 0), IDM_TRAY_TOP, L"Always on top");
     AppendMenuW(m, MF_STRING | (app->settings.require_pin ? MF_CHECKED : 0), IDM_TRAY_PIN, L"Require pairing PIN");
     AppendMenuW(m, MF_STRING | (app->fullscreen ? MF_CHECKED : 0), IDM_TRAY_FULL, L"Fullscreen");
@@ -380,6 +484,12 @@ void paint_idle(App *app, HDC hdc, RECT rc) {
 }
 
 void handle_tray_cmd(App *app, UINT id) {
+    for (const auto &size : kWindowSizes) {
+        if (size.command == id) {
+            select_window_size(app, size);
+            return;
+        }
+    }
     for (const auto &preset : kVideoQualities) {
         if (preset.command != id) continue;
         if (app->settings.width == preset.width && app->settings.height == preset.height &&
@@ -423,6 +533,16 @@ void handle_tray_cmd(App *app, UINT id) {
         app->settings.fill_screen = !app->settings.fill_screen;
         airscreen::save_settings(app->settings);
         apply_video_fill(app);
+        break;
+    case IDM_FIXED_RATIO:
+        app->settings.fixed_ratio = !app->settings.fixed_ratio;
+        airscreen::save_settings(app->settings);
+        if (app->settings.fixed_ratio) resize_video_window(app, app->window_scale);
+        break;
+    case IDM_AUTO_ROTATE:
+        app->settings.auto_rotate = !app->settings.auto_rotate;
+        airscreen::save_settings(app->settings);
+        if (app->settings.auto_rotate) resize_video_window(app, app->window_scale);
         break;
     case IDM_TRAY_STARTUP:
         airscreen::set_start_with_windows(!airscreen::start_with_windows());
@@ -532,7 +652,9 @@ LRESULT CALLBACK video_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         return 1;
     case WM_MOUSEACTIVATE:
         SetFocus(parent);
-        return MA_NOACTIVATE;
+        return MA_ACTIVATE;
+    case WM_KEYDOWN:
+        return SendMessageW(parent, msg, wparam, lparam);
     case WM_MOUSEMOVE:
     case WM_LBUTTONDOWN:
     case WM_LBUTTONDBLCLK:
@@ -559,6 +681,8 @@ LRESULT CALLBACK gear_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         return 1;
     case WM_MOUSEACTIVATE:
         return MA_NOACTIVATE;
+    case WM_KEYDOWN:
+        return SendMessageW(GetParent(hwnd), msg, wparam, lparam);
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT tme = {sizeof(tme), TME_LEAVE, hwnd, 0};
         TrackMouseEvent(&tme);
@@ -617,16 +741,45 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         SetWindowPos(hwnd, nullptr, sugg->left, sugg->top, sugg->right - sugg->left, sugg->bottom - sugg->top,
                      SWP_NOZORDER | SWP_NOACTIVATE);
         if (app) {
+            if (!app->fullscreen && (app->window_scale > 0 || app->settings.fixed_ratio)) {
+                resize_video_window(app, app->window_scale);
+            }
             layout_chrome(app);
         }
         return 0;
     }
     case WM_GETMINMAXINFO: {
         auto *mm = (MINMAXINFO *) lparam;
-        mm->ptMinTrackSize.x = 720;
-        mm->ptMinTrackSize.y = 480;
+        if (app && app->source_size.cx > 0 && app->source_size.cy > 0) {
+            SIZE frame = window_frame(app);
+            SIZE minimum = {64, 64};
+            if (app->settings.fixed_ratio) {
+                minimum = airscreen::scaled_video_size(app->source_size,
+                    std::max(64.0 / app->source_size.cx, 64.0 / app->source_size.cy));
+            }
+            mm->ptMinTrackSize = {minimum.cx + frame.cx, minimum.cy + frame.cy};
+            SIZE maximum = airscreen::scaled_video_size(app->source_size, 2.0);
+            mm->ptMaxTrackSize.x = std::max(mm->ptMaxTrackSize.x, maximum.cx + frame.cx);
+            mm->ptMaxTrackSize.y = std::max(mm->ptMaxTrackSize.y, maximum.cy + frame.cy);
+        } else {
+            mm->ptMinTrackSize.x = 720;
+            mm->ptMinTrackSize.y = 480;
+        }
         return 0;
     }
+    case WM_ENTERSIZEMOVE:
+        if (app) GetWindowRect(hwnd, &app->sizing_start_rc);
+        return 0;
+    case WM_SIZING:
+        if (app && !app->fullscreen && app->source_size.cx > 0 && app->source_size.cy > 0) {
+            app->window_scale = 0;
+            if (app->settings.fixed_ratio) {
+                auto *rect = (RECT *) lparam;
+                *rect = airscreen::fixed_ratio_rect(*rect, app->sizing_start_rc, (UINT) wparam,
+                                                   app->source_size, window_frame(app));
+            }
+        }
+        return TRUE;
     case WM_MOUSEMOVE: {
         if (app) {
             note_activity(app);
@@ -705,7 +858,13 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         }
         return 0;
     case WM_KEYDOWN:
-        if (wparam == VK_F11) {
+        if (lparam & (1LL << 30)) {
+            return 0;
+        }
+        if ((GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_SHIFT) & 0x8000) &&
+            !(GetKeyState(VK_MENU) & 0x8000) && wparam >= '1' && wparam <= '4') {
+            select_window_size(app, kWindowSizes[wparam - '1']);
+        } else if (wparam == VK_F11) {
             toggle_fullscreen(app);
         } else if (wparam == VK_F2) {
             do_rename(app);
@@ -746,9 +905,15 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         case airscreen::UiEvent::Log:
             app->overlay_detail = app->utf16(msg);
             break;
-        case airscreen::UiEvent::VideoSize:
+        case airscreen::UiEvent::VideoSize: {
+            int width = 0, height = 0;
+            if (sscanf(msg.c_str(), "%dx%d", &width, &height) == 2) {
+                update_source_size(app, width, height);
+            }
+            break;
+        }
         case airscreen::UiEvent::ClientName:
-            if (ev == airscreen::UiEvent::ClientName && !msg.empty()) {
+            if (!msg.empty()) {
                 app->overlay_status = L"Connected: " + app->utf16(msg);
                 update_title(app);
             }

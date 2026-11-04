@@ -128,6 +128,10 @@ Settings load_settings() {
             s.require_pin = (val == "1" || val == "true");
         } else if (key == "FillScreen") {
             s.fill_screen = (val == "1" || val == "true");
+        } else if (key == "FixedRatio") {
+            s.fixed_ratio = (val == "1" || val == "true");
+        } else if (key == "AutoRotate") {
+            s.auto_rotate = (val == "1" || val == "true");
         } else if (key == "DarkMode") {
             s.dark_mode = (val == "1" || val == "true");
         } else if (key == "Width") {
@@ -150,6 +154,8 @@ void save_settings(const Settings &s) {
     out << "AlwaysOnTop=" << (s.always_on_top ? 1 : 0) << "\n";
     out << "RequirePin=" << (s.require_pin ? 1 : 0) << "\n";
     out << "FillScreen=" << (s.fill_screen ? 1 : 0) << "\n";
+    out << "FixedRatio=" << (s.fixed_ratio ? 1 : 0) << "\n";
+    out << "AutoRotate=" << (s.auto_rotate ? 1 : 0) << "\n";
     out << "DarkMode=" << (s.dark_mode ? 1 : 0) << "\n";
     out << "Width=" << s.width << "\n";
     out << "Height=" << s.height << "\n";

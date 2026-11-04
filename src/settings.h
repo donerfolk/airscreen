@@ -10,6 +10,8 @@ struct Settings {
     bool always_on_top = false;
     bool require_pin = false;
     bool fill_screen = true;
+    bool fixed_ratio = false;
+    bool auto_rotate = true;
     bool dark_mode = false;
     int pin = 0; // 0 = random each time UxPlay assigns
     int width = 1920;
